@@ -2,14 +2,546 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Los Syringas Music</title>
+    <link rel="stylesheet" href="./assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./assets/css/aos.css">
+    <link rel="stylesheet" href="./assets/css/line-awesome.min.css">
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/7.0.96/css/materialdesignicons.min.css"
+        integrity="sha512-fXnjLwoVZ01NUqS/7G5kAnhXNXat6v7e3M9PhoMHOTARUMCaf5qNO84r5x9AFf5HDzm3rEZD8sb/n6dZ19SzFA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 
-<body>
+<body data-bs-spy="scroll" data-bs-target=".navbar">
 
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top shadow shadow-md-none">
+        <div class="container flex-lg-column">
+            <a class="navbar-brand mx-lg-auto mb-lg-4" href="#">
+                <span class="h3 fw-bold d-block d-lg-none">LOS SYRINGAS</span>
+                <img src="./assets/images/squarelossyringas.jpeg" class="d-none d-lg-block rounded-circle" alt="">
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto flex-lg-column text-lg-center">
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="#home">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#skills">Socials</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#portfolio">Music</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About</a>
+                    </li>
+
+                    <!-- <li class="nav-item">
+                        <a class="nav-link" href="#reviews">Reviews</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#blog">Blog</a>
+                    </li> -->
+
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contact">Contact</a>
+                    </li>
+
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <!-- //NAVBAR -->
+
+    <!-- CONTENT WRAPPER -->
+    <div id="content-wrapper">
+
+        <!-- HOME -->
+        <section id="home" class="full-height px-lg-5">
+
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-10">
+                        <h1 class="display-4 fw-bold text-dark" data-aos="fade-up">WE ARE <span class="text-brand">LOS
+                                SYRINGAS</span> FROM BOISE, ID</h1>
+                        <p class="lead mt-2 mb-4 text-dark" data-aos="fade-up" data-aos-delay="300">As an ode to the
+                            Idaho state flower, 5 friends named their band Los Syringas. While each member has a unique
+                            taste in music, the result is a forced fusion of Surf Rock, Latin, and Pop Jazz. Influences
+                            have a range between Los Amigos Invisibles all the way to Sigur Rós. The five piece group
+                            started jamming together the summer of 2019 and released their first single "Satellite" the
+                            summer of 2021. The band consists of Josué (vocals/guitar), Josh (keys), Pearson (lead
+                            guitar), Shawn (bass), and Luke (drums).
+                        </p>
+                        <div data-aos="fade-up" data-aos-delay="600">
+                            <a href="#portfolio" class="btn btn-brand me-3 text-light">Explore Our Music</a>
+                            <!-- NOTE should I add my phone number? -->
+                            <!-- <a href="#" class="link-custom">Call: (233) 3454 2342</a> -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+        <!-- //HOME -->
+
+        <!-- NOTE LANGUAGES AND FRAMEWORKS -->
+        <section id="skills" class="full-height px-lg-5">
+            <div class="container">
+
+                <div class="row pb-4" data-aos="fade-up">
+                    <div class="col-lg-8">
+                        <h6 class="text-brand">Skills</h6>
+                        <h1 class="text-dark">Languages and Frameworks</h1>
+                    </div>
+                </div>
+
+                <div class="row gy-4">
+
+                    <div class="col-md-4" data-aos="fade-up">
+                        <div class="service p-4 bg-base rounded-4 shadow-effect">
+                            <div class="iconbox rounded-4">
+                                <i class="las la-code"></i>
+                            </div>
+                            <h5 class="mt-4 mb-2">Languages</h5>
+                            <p>HTML • CSS • JavaScript • SQL • C#</p>
+                            <!-- <a href="#" class="link-custom">Read More</a> -->
+                        </div>
+                    </div>
+
+                    <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
+                        <div class="service p-4 bg-base rounded-4 shadow-effect">
+                            <div class="iconbox rounded-4">
+                                <i class="las la-puzzle-piece"></i>
+                            </div>
+                            <h5 class="mt-4 mb-2">Frameworks</h5>
+                            <p>Vue.js • Node.js • Sass • Bootstrap • .NET</p>
+                            <!-- <a href="#" class="link-custom">Read More</a> -->
+                        </div>
+                    </div>
+
+                    <div class="col-md-4" data-aos="fade-up" data-aos-delay="600">
+                        <div class="service p-4 bg-base rounded-4 shadow-effect">
+                            <div class="iconbox rounded-4">
+                                <i class="las la-laptop-code"></i>
+                            </div>
+                            <h5 class="mt-4 mb-2">Databases</h5>
+                            <p>MongoDB • Mongoose • Dapper • MySQL</p>
+                            <!-- <a href="#" class="link-custom">Read More</a> -->
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+        <!-- LANGUAGES AND FRAMEWORKS -->
+
+        <!-- NOTE PROJECTS -->
+        <section id="portfolio" class="full-height px-lg-5">
+            <div class="container">
+
+                <div class="row pb-4" data-aos="fade-up">
+                    <div class="col-lg-8">
+                        <h6 class="text-brand">Portfolio</h6>
+                        <h1 class="text-dark">My Recent Projects</h1>
+                    </div>
+                </div>
+
+                <div class="row gy-4">
+
+                    <div class="col-md-6" data-aos="fade-up">
+                        <div class="card-custom rounded-4 bg-base shadow-effect">
+                            <div class="card-custom-image rounded-top-4">
+                                <img class="" src="./assets/images/keeper.jpeg" alt="">
+                            </div>
+                            <div class="card-custom-content p-4">
+                                <h4>Keepr</h4>
+                                <p>Keepr is a social network that allows users to visually share and discover new
+                                    interests by posting images or videos to their own, or others', collections (i.e., a
+                                    collection of 'vaults,' usually with a common theme) and browsing what other users
+                                    have kept.</p>
+                                <a href="https://k33pr.onrender.com/#/" class="link-custom">Go to Project</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6" data-aos="fade-up" data-aos-delay="300">
+                        <div class="card-custom rounded-4 bg-base shadow-effect">
+                            <div class="card-custom-image rounded-top-4">
+                                <img class="" src="./assets/images/Tempo4.jpg" alt="">
+                            </div>
+                            <div class="card-custom-content p-4">
+                                <h4>Tempo</h4>
+                                <p>This application is for those want to create a playlist based on the their running
+                                    pace. Tempo uses the Spotify API to generate a playlist, based on genre and
+                                    tempo, to later add to your Spotify account. Running to
+                                    your desired pace has never been easier!</p>
+                                <a href="https://github.com/josuehdz0/tempo" class="link-custom">Go to Repository</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6" data-aos="fade-up">
+                        <div class="card-custom rounded-4 bg-base shadow-effect">
+                            <div class="card-custom-image rounded-top-4">
+                                <img class="" src="./assets/images/Tower.jpg" alt="">
+                            </div>
+                            <div class="card-custom-content p-4">
+                                <h4>Tower</h4>
+                                <p>Tower is an application designed to help people get together with
+                                    their towers of users for events. Whether they are concerts, expos, or sporting
+                                    events, Tower will be there to get people together.</p>
+                                <a href="https://boisetowerlive.onrender.com" class="link-custom">Go to Project</a>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- NOTE maybe add AllSpice here later? -->
+                    <!-- <div class="col-md-6" data-aos="fade-up" data-aos-delay="300">
+                        <div class="card-custom rounded-4 bg-base shadow-effect">
+                            <div class="card-custom-image rounded-4">
+                                <img class="rounded-4" src="./assets/images/project-4.png" alt="">
+                            </div>
+                            <div class="card-custom-content p-4">
+                                <h4>Startup Landing Page</h4>
+                                <p>Innovation that exceeds expectations. Astra is a true template equiqed with all the
+                                    elements you could ever need to put together</p>
+                                <a href="#" class="link-custom">Read More</a>
+                            </div>
+                        </div>
+                    </div> -->
+                </div>
+
+            </div>
+        </section>
+        <!-- //PROJECTS -->
+
+        <!-- ABOUT -->
+        <section id="about" class="full-height px-lg-5">
+            <div class="container">
+
+                <div class="row pb-4" data-aos="fade-up">
+                    <div class="col-lg-8">
+                        <h6 class="text-brand">ABOUT</h6>
+                        <h1 class="text-dark">My Education & Experiance</h1>
+                    </div>
+                </div>
+
+                <div class="row gy-5">
+                    <div class="col-lg-6">
+
+                        <h3 class="mb-4 text-dark" data-aos="fade-up" data-aos-delay="300">Education</h3>
+                        <div class="row gy-4">
+
+                            <div class="col-12" data-aos="fade-up" data-aos-delay="600">
+                                <div class="bg-base p-4 rounded-4 shadow-effect">
+                                    <h4>Full-Stack Software Develpoment</h4>
+                                    <p class="text-brand mb-2">CodeWorks (2023)</p>
+                                    <p class="mb-0">As a student we had over 500 hours developing fullstack applications
+                                        using various technologies,
+                                        implemented Agile and SCRUM in team projects
+                                        , and group collaboration building fullstack applications.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="col-12" data-aos="fade-up" data-aos-delay="600">
+                                <div class="bg-base p-4 rounded-4 shadow-effect">
+                                    <h4>Civil Engineering</h4>
+                                    <p class="text-brand mb-2">Walla Walla University (2012 - 2017)</p>
+                                    <p class="mb-0"> At WWU, I developed my skills in a hands-on laboratory setting,
+                                        whether it was studying the engineering properties of soil in the soils lab or
+                                        hydraulics in the fluid mechanics lab. I was introduced to a wide field of STEM
+                                        classes from Calculus to Thermodynamics and used a variety of software for
+                                        projects such as AutoCAD and Macros in Excel. </p>
+                                </div>
+                            </div>
+
+                            <!-- <div class="col-12" data-aos="fade-up" data-aos-delay="600">
+                                <div class="bg-base p-4 rounded-4 shadow-effect">
+                                    <h4>Master of Software Engineering</h4>
+                                    <p class="text-brand mb-2">De Mars University Venston Bay (2015 - 2020)</p>
+                                    <p class="mb-0">All we are more and design lorem ipsum dolor creativity sit amet
+                                        consectetur adipisicing elit</p>
+                                </div>
+                            </div> -->
+
+                        </div>
+
+                    </div>
+
+                    <div class="col-lg-6">
+
+                        <h3 class="mb-4 text-dark" data-aos="fade-up" data-aos-delay="300">Experience</h3>
+                        <div class="row gy-4">
+
+                            <div class="col-12" data-aos="fade-up" data-aos-delay="600">
+                                <div class="bg-base p-4 rounded-4 shadow-effect">
+                                    <h4>Software Development Student </h4>
+                                    <p class="text-brand mb-2">CodeWorks (2023)</p>
+                                    <p class="mb-0">Developed multiple web applications using Vue, JavaScript, CSS,
+                                        HTML, Node.js, C#, and Bootstrap.
+                                        Practice Frontend and Backend software development to progress towards Full
+                                        Stack web development. Implemented Scrum to work together to build a web
+                                        application as a team to build
+                                        a unique web application and meet our deadline.
+                                        Trained with life changing mentors daily on my journey through software
+                                        development. Learning code theory and implementing that knowledge into web
+                                        applications.</p>
+                                </div>
+                            </div>
+
+                            <div class="col-12" data-aos="fade-up" data-aos-delay="600">
+                                <div class="bg-base p-4 rounded-4 shadow-effect">
+                                    <h4>Technical Support Specialist</h4>
+                                    <p class="text-brand mb-2">Apple (2020 - 2022)</p>
+                                    <p class="mb-0">Working at Apple, I learned not only the importance of great
+                                        UI/UX for consumers, but also the importance of efficient internal software. As
+                                        an employee, we had the ability to provide feedback for developers that created
+                                        the internal software. Technicians were expected to think on their feet as
+                                        well as adapt to any changes in products and software</p>
+                                </div>
+                            </div>
+
+                            <div class="col-12" data-aos="fade-up" data-aos-delay="600">
+                                <div class="bg-base p-4 rounded-4 shadow-effect">
+                                    <h4>Associate Project Manager for a Civil Engineering Project</h4>
+                                    <p class="text-brand mb-2">Walla Walla University / Engineers Without Borders</p>
+                                    <p class="mb-0">Practiced ingenuity and following last minute changes through the
+                                        processes of an International Engineering Project standards.
+                                        Traveled to Peru twice to help translate between community members, project
+                                        managers, and local government.</p>
+                                </div>
+                            </div>
+
+
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+        <!-- //ABOUT -->
+
+        <!-- REVIEWS -->
+        <!-- <section id="reviews" class="full-height px-lg-5">
+            <div class="container">
+
+                <div class="row pb-4" data-aos="fade-up">
+                    <div class="col-lg-8">
+                        <h6 class="text-brand">REVIEWS</h6>
+                        <h1>What our subscribers say</h1>
+                    </div>
+                </div>
+
+                <div class="row gy-4">
+
+                    <div class="col-md-4" data-aos="fade-up">
+
+                        <div class="review shadow-effect bg-base p-4 rounded-4">
+                            <div class="text-brand h5">
+                                <i class="las la-star"></i>
+                                <i class="las la-star"></i>
+                                <i class="las la-star"></i>
+                                <i class="las la-star"></i>
+                                <i class="las la-star"></i>
+                            </div>
+                            <p class="my-3">Lorem ipsum dolor sit amet consectetur, adipisicing elit. Vel quae facilis
+                                fugiat molestias ab illum excepturi, qui optio modi asperiores, delectus maiores!</p>
+                            <div class="person">
+                                <h5 class="mb-0">Jon Doe</h5>
+                                <p class="mb-0">Twitter</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
+
+                        <div class="review shadow-effect bg-base p-4 rounded-4">
+                            <div class="text-brand h5">
+                                <i class="las la-star"></i>
+                                <i class="las la-star"></i>
+                                <i class="las la-star"></i>
+                                <i class="las la-star"></i>
+                                <i class="las la-star"></i>
+                            </div>
+                            <p class="my-3">Lorem ipsum dolor sit amet consectetur, adipisicing elit. Vel quae facilis
+                                fugiat molestias ab illum excepturi, qui optio modi asperiores, delectus maiores!</p>
+                            <div class="person">
+                                <h5 class="mb-0">Jon Doe</h5>
+                                <p class="mb-0">Twitter</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="col-md-4" data-aos="fade-up" data-aos-delay="600">
+
+                        <div class="review shadow-effect bg-base p-4 rounded-4">
+                            <div class="text-brand h5">
+                                <i class="las la-star"></i>
+                                <i class="las la-star"></i>
+                                <i class="las la-star"></i>
+                                <i class="las la-star"></i>
+                                <i class="las la-star"></i>
+                            </div>
+                            <p class="my-3">Lorem ipsum dolor sit amet consectetur, adipisicing elit. Vel quae facilis
+                                fugiat molestias ab illum excepturi, qui optio modi asperiores, delectus maiores!</p>
+                            <div class="person">
+                                <h5 class="mb-0">Jon Doe</h5>
+                                <p class="mb-0">Twitter</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </section> -->
+        <!-- //REVIEWS -->
+
+        <!-- BLOG -->
+        <!-- <section id="blog" class="full-height px-lg-5">
+            <div class="container">
+
+                <div class="row pb-4" data-aos="fade-up">
+                    <div class="col-lg-8">
+                        <h6 class="text-brand">BLOG</h6>
+                        <h1>My BLog Posts</h1>
+                    </div>
+                </div>
+
+                <div class="row gy-4">
+
+                    <div class="col-md-4" data-aos="fade-up">
+                        <div class="card-custom rounded-4 bg-base shadow-effect">
+                            <div class="card-custom-image rounded-4">
+                                <img class="rounded-4" src="./assets/images/blog-post-1.jpg" alt="">
+                            </div>
+                            <div class="card-custom-content p-4">
+                                <p class="text-brand mb-2">20 Dec, 2022</p>
+                                <h5 class="mb-4">Design a creative landing page using Bootstrap 5</h5>
+                                <a href="#" class="link-custom">Read More</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
+                        <div class="card-custom rounded-4 bg-base shadow-effect">
+                            <div class="card-custom-image rounded-4">
+                                <img class="rounded-4" src="./assets/images/blog-post-2.jpg" alt="">
+                            </div>
+                            <div class="card-custom-content p-4">
+                                <p class="text-brand mb-2">20 Dec, 2022</p>
+                                <h5 class="mb-4">Design a creative landing page using Bootstrap 5</h5>
+                                <a href="#" class="link-custom">Read More</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4" data-aos="fade-up" data-aos-delay="600">
+                        <div class="card-custom rounded-4 bg-base shadow-effect">
+                            <div class="card-custom-image rounded-4">
+                                <img class="rounded-4" src="./assets/images/blog-post-3.jpg" alt="">
+                            </div>
+                            <div class="card-custom-content p-4">
+                                <p class="text-brand mb-2">20 Dec, 2022</p>
+                                <h5 class="mb-4">Design a creative landing page using Bootstrap 5</h5>
+                                <a href="#" class="link-custom">Read More</a>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section> -->
+        <!-- //BLOG -->
+
+        <!-- CONTACT -->
+        <section id="contact" class="full-height px-lg-5">
+            <div class="container">
+
+                <div class="row justify-content-center ">
+                    <div class="col-lg-8 pb-4" data-aos="fade-up">
+                        <h6 class="text-brand ">CONTACT</h6>
+                        <h1 class="text-dark">Interested in working together? Let's talk
+                        </h1>
+                    </div>
+
+                    <div class="col-lg-8" data-aos="fade-up" data-aos-delay="300">
+
+                        <form action="https://formsubmit.co/josuehdz0@gmail.com" method="POST" class="row g-lg-3 gy-3">
+                            <div class="form-group col-md-6">
+                                <input type="text" class="form-control" name="name" required
+                                    placeholder="Enter your name">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <input type="email" class="form-control" name="email" required
+                                    placeholder="Enter your email">
+                            </div>
+                            <div class="form-group col-12">
+                                <input type="text" class="form-control" name="subject" placeholder="Enter subject">
+                            </div>
+                            <div class="form-group col-12">
+                                <textarea name="message" rows="4" class="form-control"
+                                    placeholder="Enter your message"></textarea>
+                            </div>
+                            <div class="form-group col-12 d-grid">
+                                <button type="submit" class="btn btn-brand">Contact me</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+
+            </div>
+        </section>
+        <!-- //CONTACT -->
+
+        <!-- FOOTER -->
+        <footer class="py-5 px-lg-5">
+            <div class="container">
+                <div class="row gy-4 justify-content-center">
+
+                    <div class="col-auto">
+                        <div class="social-icons">
+                            <!-- <a href="#"><i class="lab la-twitter"></i></a> -->
+                            <a href="https://www.linkedin.com/in/josuehdz0/"><i class="lab la-linkedin"></i></a>
+                            <!-- <a href="#"><i class="lab la-instagram"></i></a> -->
+                            <a href="https://github.com/josuehdz0"><i class="lab la-github"></i></a>
+                            <a href="mailto:josuehdz0@gmail.com"><i class="mdi mdi-email"></i></a>
+
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+        <!-- //FOOTER -->
+
+    </div>
+    <!-- //CONTENT WRAPPER -->
+
+
+
+    <script src="./assets/js/bootstrap.bundle.min.js"></script>
+    <script src="./assets/js/aos.js"></script>
+    <script src="./assets/js/main.js"></script>
 </body>
 
 </html>
