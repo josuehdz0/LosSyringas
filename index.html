@@ -14,9 +14,26 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/7.0.96/css/materialdesignicons.min.css"
         integrity="sha512-fXnjLwoVZ01NUqS/7G5kAnhXNXat6v7e3M9PhoMHOTARUMCaf5qNO84r5x9AFf5HDzm3rEZD8sb/n6dZ19SzFA=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        body.debug .container,
+        body.debug .container-fluid {
+            outline: 2px double blue;
+            outline-offset: -2px;
+        }
+
+        body.debug .row {
+            outline: 2px dashed red;
+            outline-offset: -2px;
+        }
+
+        body.debug [class*="col-"] {
+            outline: 2px dotted forestgreen;
+            outline-offset: -3px;
+        }
+    </style>
 </head>
 
-<body data-bs-spy="scroll" data-bs-target=".navbar">
+<body class="debug" data-bs-spy="scroll" data-bs-target=".navbar">
 
     <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top shadow shadow-md-none">
@@ -108,7 +125,8 @@
                 <div class="row gy-4">
 
                     <div class="col-md-4" data-aos="fade-up">
-                        <a href="https://open.spotify.com/artist/4RppgAwCPBVdc8tIWbG1mq">
+                        <a href="https://open.spotify.com/artist/4RppgAwCPBVdc8tIWbG1mq" target="_blank"
+                            rel="noopener noreferrer">
                             <div class="service p-4 bg-base rounded-4 shadow-effect">
                                 <div class="iconbox rounded-4">
                                     <i class="mdi mdi-spotify text-light"></i>
@@ -121,7 +139,8 @@
                     </div>
 
                     <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
-                        <a href="https://music.apple.com/us/artist/los-syringas/1577434599">
+                        <a href="https://music.apple.com/us/artist/los-syringas/1577434599" target="_blank"
+                            rel="noopener noreferrer">
 
                             <div class="service p-4 bg-base rounded-4 shadow-effect">
                                 <div class="iconbox rounded-4">
@@ -136,7 +155,7 @@
                     </div>
 
                     <div class="col-md-4" data-aos="fade-up" data-aos-delay="600">
-                        <a href="https://www.instagram.com/los_syringas/">
+                        <a href="https://www.instagram.com/los_syringas/" target="_blank" rel="noopener noreferrer">
                             <div class="service p-4 bg-base rounded-4 shadow-effect">
                                 <div class="iconbox rounded-4">
                                     <i class="mdi mdi-instagram text-light"></i>
@@ -174,16 +193,18 @@
                                 <img class="" src="./assets/images/rightnowphoto.jpeg" alt="">
                             </div>
                             <div class="card-custom-content p-4 d-flex justify-content-between">
-                                <h3 class="">Right Now</h3>
+                                <h3 class="d-flex align-items-center">Right Now</h3>
                                 <div>
 
-                                    <a href="">
+                                    <a href="https://open.spotify.com/track/0Y5G1A6RWa7LDL6qaVHTix?si=oGP1m0btQ1aFog03WszApg"
+                                        target="_blank" rel="noopener noreferrer">
                                         <i class="mdi mdi-spotify fs-1 text-light"></i>
                                     </a>
-                                    <a href="">
+                                    <a href="https://music.apple.com/us/album/right-now/1631729227?i=1631729228"
+                                        target="_blank" rel="noopener noreferrer">
                                         <i class="mdi mdi-music fs-1 text-light"></i>
                                     </a>
-                                    <a href="">
+                                    <a href="https://youtu.be/jPnfuf61OK8" target="_blank" rel="noopener noreferrer">
                                         <i class="mdi mdi-youtube fs-1 text-light"></i>
                                     </a>
                                 </div>
@@ -198,16 +219,18 @@
                                 <img class="" src="./assets/images/satellitephoto.jpeg" alt="">
                             </div>
                             <div class="card-custom-content p-4 d-flex justify-content-between">
-                                <h3 class="">Satellite</h3>
+                                <h3 class="d-flex align-items-center">Satellite</h3>
                                 <div>
 
-                                    <a href="">
+                                    <a href="https://open.spotify.com/track/6OZlh73PEKO4oohQ9OCWJT?si=DszC1O6UQISJM0fiHMBFyA"
+                                        target="_blank" rel="noopener noreferrer">
                                         <i class="mdi mdi-spotify fs-1 text-light"></i>
                                     </a>
-                                    <a href="">
+                                    <a href="https://music.apple.com/us/album/satellite/1577435659?i=1577435660"
+                                        target="_blank" rel="noopener noreferrer">
                                         <i class="mdi mdi-music fs-1 text-light"></i>
                                     </a>
-                                    <a href="">
+                                    <a href="https://youtu.be/XmFZ-oQI3eA" target="_blank" rel="noopener noreferrer">
                                         <i class="mdi mdi-youtube fs-1 text-light"></i>
                                     </a>
                                 </div>
@@ -222,16 +245,18 @@
                                 <img class="" src="./assets/images/lildrummerboyphoto.jpeg" alt="">
                             </div>
                             <div class="card-custom-content p-4 d-flex justify-content-between">
-                                <h3 class="">Lil Drummer Boy</h3>
+                                <h3 class="d-flex align-items-center">Lil Drummer Boy</h3>
                                 <div>
 
-                                    <a href="">
+                                    <a href="https://open.spotify.com/track/0QKQPqC1sxAvlRy2lOXxb5?si=gsCnqnehTRuUvcm1kpbfEQ"
+                                        target="_blank" rel="noopener noreferrer">
                                         <i class="mdi mdi-spotify fs-1 text-light"></i>
                                     </a>
-                                    <a href="">
+                                    <a href="https://music.apple.com/us/album/little-drummer-boy/1607416561?i=1607416562"
+                                        target="_blank" rel="noopener noreferrer">
                                         <i class="mdi mdi-music fs-1 text-light"></i>
                                     </a>
-                                    <a href="">
+                                    <a href="https://youtu.be/MU5A_6MeoEg" target="_blank" rel="noopener noreferrer">
                                         <i class="mdi mdi-youtube fs-1 text-light"></i>
                                     </a>
                                 </div>
@@ -280,9 +305,14 @@
                                 <div class="bg-base p-4 rounded-4 shadow-effect">
                                     <h4>Our Genre</h4>
                                     <!-- <p class="text-brand mb-2">CodeWorks (2023)</p> -->
-                                    <p class="mb-0">Lorem ipsum dolor sit amet consectetur adipisicing elit. Ad tempora
-                                        laudantium ullam officiis dicta dolore, repellat maiores sint explicabo dolorum,
-                                        architecto quo accusantium provident temporibus at nesciunt iure et blanditiis!
+                                    <p class="mb-0">We don't wanna say we are "genreless"....cause we are not that
+                                        hipster. The closest genre we think we is indie surf rock. But if you disagree,
+                                        tell us what we are! Cause we are still trying to figure that out. Click <a
+                                            href="https://open.spotify.com/playlist/72h8ROI5KmTkd5UlEd2w8i"
+                                            class="--color-brand" target="_blank" rel="noopener noreferrer">here</a> to
+                                        follow a playlist we made that
+                                        insipres our
+                                        sound.
                                     </p>
                                 </div>
                             </div>
@@ -291,9 +321,14 @@
                                 <div class="bg-base p-4 rounded-4 shadow-effect">
                                     <h4>How We Met</h4>
                                     <!-- <p class="text-brand mb-2">Walla Walla University (2012 - 2017)</p> -->
-                                    <p class="mb-0"> Lorem ipsum, dolor sit amet consectetur adipisicing elit. Sint
-                                        expedita esse in eaque perferendis quidem a alias suscipit quaerat minus. Dolore
-                                        non facere odio sequi veniam quo, rem tempora laboriosam? </p>
+                                    <p class="mb-0"> Pearson, Josué, and Josh used to live together. Each would jam
+                                        alone in there room. Luke moved to Boise from Wisconsin and got a job were Josué
+                                        worked. Luke suggested they all should jam together sometime.They did. It was
+                                        fun. So fun
+                                        that Luke suggested they start a band. The rest of the group didn't really know
+                                        what starting a "band" meant since they never been in one. They realized it just
+                                        meant hanging out more and playing music consistently. Now we have a website.
+                                    </p>
                                 </div>
                             </div>
 
@@ -315,7 +350,7 @@
                         <h3 class="mb-4 text-dark" data-aos="fade-up" data-aos-delay="300">Band Members</h3>
                         <div class="row gy-4">
 
-                            <div class="col-12" data-aos="fade-up" data-aos-delay="600">
+                            <div class="col-md-6" data-aos="fade-up" data-aos-delay="600">
                                 <div class="bg-base p-4 rounded-4 shadow-effect">
                                     <h4>Luke Jones</h4>
                                     <p class="text-brand mb-2">Drummer</p>
@@ -326,7 +361,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-12" data-aos="fade-up" data-aos-delay="600">
+                            <div class="col-md-6" data-aos="fade-up" data-aos-delay="600">
                                 <div class="bg-base p-4 rounded-4 shadow-effect">
                                     <h4>Josh Harris</h4>
                                     <p class="text-brand mb-2">Keys</p>
@@ -337,7 +372,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-12" data-aos="fade-up" data-aos-delay="600">
+                            <div class="col-md-6" data-aos="fade-up" data-aos-delay="600">
                                 <div class="bg-base p-4 rounded-4 shadow-effect">
                                     <h4>Shawn Derksen</h4>
                                     <p class="text-brand mb-2">Bassist/Vocals</p>
@@ -348,7 +383,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-12" data-aos="fade-up" data-aos-delay="600">
+                            <div class="col-md-6" data-aos="fade-up" data-aos-delay="600">
                                 <div class="bg-base p-4 rounded-4 shadow-effect">
                                     <h4>Pearson Morgan</h4>
                                     <p class="text-brand mb-2">Guitarist</p>
@@ -359,7 +394,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-12" data-aos="fade-up" data-aos-delay="600">
+                            <div class="col-md-6" data-aos="fade-up" data-aos-delay="600">
                                 <div class="bg-base p-4 rounded-4 shadow-effect">
                                     <h4>Josue Hernandez</h4>
                                     <p class="text-brand mb-2">Vocals/Guitar</p>
