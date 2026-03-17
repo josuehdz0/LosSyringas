@@ -6,6 +6,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { Volume2, VolumeX, Play, Pause } from "lucide-react";
 import * as Tone from "tone";
+import { stemAnalysers, setActiveStemIds, setIsMuted, setIsPlaying } from "@/lib/audioAnalysers";
 
 const stems = [
   { id: "bass",       label: "Bass",        image: "/Portraits/Shawn.png",    file: "/stems/TSINFU demo flat_Bass.wav" },
@@ -43,7 +44,7 @@ function StemButton({ label, image, on, loading, circleRef, onToggle }: StemButt
         <div ref={circleRef} className="absolute inset-0 rounded-full pointer-events-none" />
       </div>
       <span className={`mt-1.5 text-[10px] font-semibold uppercase tracking-wide leading-none transition-colors duration-200 ${
-        on ? "text-[var(--blue)]" : "text-[var(--black)]/60"
+        on ? "text-[var(--yellow)]" : "text-[var(--black)]/60"
       }`}>
         {label}
       </span>
@@ -58,6 +59,7 @@ export default function StemPlayer() {
   const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [animReady, setAnimReady] = useState(splashCleared);
+  const [navMenuOpen, setNavMenuOpen] = useState(false);
   const isHome = usePathname() === "/";
 
   const stemsRef = useRef<HTMLDivElement>(null);
@@ -75,7 +77,8 @@ export default function StemPlayer() {
 
   useGSAP(() => {
     if (animReady) return;
-    gsap.set([stemsRef.current, controlsRef.current], { opacity: 0, y: 40 });
+    const targets = [stemsRef.current, controlsRef.current].filter(Boolean);
+    if (targets.length) gsap.set(targets, { opacity: 0, y: 40 });
   }, []);
 
   useGSAP(() => {
@@ -98,6 +101,7 @@ export default function StemPlayer() {
 
   useEffect(() => {
     Tone.getDestination().mute = muted;
+    setIsMuted(muted);
     window.dispatchEvent(new CustomEvent("muteChange", { detail: { muted } }));
   }, [muted]);
 
@@ -110,6 +114,15 @@ export default function StemPlayer() {
   }, []);
 
   useEffect(() => {
+    function onNavMenuChange(e: Event) {
+      setNavMenuOpen((e as CustomEvent<{ open: boolean }>).detail.open);
+    }
+    window.addEventListener("navMenuChange", onNavMenuChange);
+    return () => window.removeEventListener("navMenuChange", onNavMenuChange);
+  }, []);
+
+  useEffect(() => {
+    setActiveStemIds(active);
     stems.forEach(({ id }) => {
       const player = players.current[id];
       if (player) player.mute = !active.has(id);
@@ -121,9 +134,9 @@ export default function StemPlayer() {
         const existing = glowTweens.current[id];
         if (existing && existing.isActive() && existing.targets()[0] === el) return;
         existing?.kill();
-        gsap.set(el, { boxShadow: "0 0 0 2px rgba(30,150,252,0.4)" });
+        gsap.set(el, { boxShadow: "0 0 0 2px rgba(255,198,0,0.4)" });
         glowTweens.current[id] = gsap.to(el, {
-          boxShadow: "0 0 0 5px rgba(30,150,252,1)",
+          boxShadow: "0 0 0 5px rgba(255,198,0,1)",
           duration: 0.9,
           repeat: -1,
           yoyo: true,
@@ -132,7 +145,7 @@ export default function StemPlayer() {
       } else {
         glowTweens.current[id]?.kill();
         glowTweens.current[id] = null;
-        gsap.to(el, { boxShadow: "0 0 0 0px rgba(30,150,252,0)", duration: 0.3 });
+        gsap.to(el, { boxShadow: "0 0 0 0px rgba(255,198,0,0)", duration: 0.3 });
       }
     });
   }, [active, animReady, isHome]);
@@ -142,7 +155,11 @@ export default function StemPlayer() {
     await Tone.start();
     await Promise.all(
       stems.map(({ id, file }) => {
-        const player = new Tone.Player({ url: file, loop: true, mute: !active.has(id) }).toDestination();
+        const analyser = new Tone.Analyser("waveform", 256);
+        stemAnalysers[id] = analyser;
+        const player = new Tone.Player({ url: file, loop: true, mute: !active.has(id) });
+        player.connect(analyser);
+        analyser.toDestination();
         players.current[id] = player;
         return player.load(file);
       })
@@ -183,6 +200,7 @@ export default function StemPlayer() {
     if (!started) { await startAudio(); return; }
     const rawCtx = Tone.getContext().rawContext as AudioContext;
     if (playing) { await rawCtx.suspend(); } else { await rawCtx.resume(); }
+    setIsPlaying(!playing);
     setPlaying((p) => !p);
   }
 
@@ -198,7 +216,7 @@ export default function StemPlayer() {
     <>
       {/* Stems — home page only, single render, responsive grid */}
       {isHome && (
-        <div ref={stemsRef} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <div ref={stemsRef} className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-opacity duration-200 ${navMenuOpen ? "opacity-0 pointer-events-none" : ""}`}>
           <div className="grid grid-cols-3 w-[75vw] gap-x-3 gap-y-3 md:w-auto md:flex md:flex-row md:gap-4" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
             {stems.map(({ id, label, image }) => (
               <StemButton

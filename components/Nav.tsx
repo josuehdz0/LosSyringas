@@ -20,6 +20,7 @@ export default function Nav() {
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   const isHome = pathname === "/";
 
@@ -40,7 +41,19 @@ export default function Nav() {
     return () => window.removeEventListener("splashEntered", onEntered);
   }, [isHome]);
 
-  // Stay in sync with StemPlayer mute state
+  useEffect(() => {
+    function onScroll() { setScrolled(window.scrollY > 16); }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Prevent body scroll and notify StemPlayer when menu is open
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    window.dispatchEvent(new CustomEvent("navMenuChange", { detail: { open } }));
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
   useEffect(() => {
     function onMuteChange(e: Event) {
       setMuted((e as CustomEvent<{ muted: boolean }>).detail.muted);
@@ -55,10 +68,6 @@ export default function Nav() {
     window.dispatchEvent(new CustomEvent("muteToggle", { detail: { muted: next } }));
   }
 
-  const logoClass = isHome
-    ? "text-white hover:text-white/70"
-    : "text-[var(--black)] hover:text-[var(--blue)]";
-
   function linkClass(href: string) {
     const active = pathname === href;
     if (isHome) {
@@ -71,63 +80,88 @@ export default function Nav() {
       : "text-[var(--black)] hover:text-[var(--blue)]";
   }
 
-  const hamburgerColor = isHome ? "bg-white" : "bg-[var(--black)]";
+  // When menu is open, everything in the top bar goes dark
+  const logoFill = open ? "var(--black)" : (isHome ? "white" : "var(--black)");
+  const iconColor = open
+    ? "text-[var(--black)]"
+    : (isHome ? "text-white" : "text-[var(--black)]");
+  const hamburgerColor = open ? "bg-[var(--black)]" : (isHome ? "bg-white" : "bg-[var(--black)]");
 
   return (
-    <nav ref={navRef} className={`fixed top-0 left-0 right-0 z-50 ${!visible ? "opacity-0 pointer-events-none" : ""}`}>
-      <div className="flex items-center justify-between px-6 py-4">
-        <Link href="/" onClick={() => setOpen(false)} aria-label="Los Syringas">
-          <Logo
-            className="h-8 w-auto transition-opacity hover:opacity-70"
-            fill={isHome ? "white" : "var(--black)"}
-          />
-        </Link>
+    <>
+      {/* Top bar — transitions to white background when menu is open */}
+      <nav
+        ref={navRef}
+        className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 ${
+          open
+            ? "bg-white"
+            : !isHome && scrolled
+            ? "bg-white/90 backdrop-blur-md shadow-sm"
+            : ""
+        } ${!visible ? "opacity-0 pointer-events-none" : ""}`}
+      >
+        <div className="flex items-center justify-between px-6 py-4">
+          <Link href="/" onClick={() => setOpen(false)} aria-label="Los Syringas">
+            <Logo
+              className="h-8 w-auto transition-opacity hover:opacity-70"
+              fill={logoFill}
+            />
+          </Link>
 
-        {/* Desktop links */}
-        <ul className="hidden md:flex gap-6 items-center">
-          {links.map(({ href, label }) => (
-            <li key={href}>
-              <Link
-                href={href}
-                className={`font-display font-semibold text-sm tracking-wide uppercase transition-all ${linkClass(href)}`}
-              >
-                {label}
-              </Link>
-            </li>
-          ))}
-        </ul>
+          {/* Desktop links */}
+          <ul className="hidden md:flex gap-6 items-center">
+            {links.map(({ href, label }) => (
+              <li key={href}>
+                <Link
+                  href={href}
+                  className={`font-display font-semibold text-sm tracking-wide uppercase transition-all ${linkClass(href)}`}
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
 
-        {/* Mobile right — mute + hamburger */}
-        <div className="md:hidden flex items-center gap-4">
-          <button
-            onClick={handleMute}
-            aria-label="Toggle mute"
-            className={`transition-opacity ${isHome ? "text-white" : "text-[var(--black)]"} ${muted ? "opacity-40" : "opacity-100"}`}
-          >
-            {muted ? <VolumeX size={20} strokeWidth={1.75} /> : <Volume2 size={20} strokeWidth={1.75} />}
-          </button>
+          {/* Mobile right — mute + hamburger */}
+          <div className="md:hidden flex items-center gap-4">
+            <button
+              onClick={handleMute}
+              aria-label="Toggle mute"
+              className={`transition-all duration-300 ${iconColor} ${muted ? "opacity-40" : "opacity-100"}`}
+            >
+              {muted ? <VolumeX size={20} strokeWidth={1.75} /> : <Volume2 size={20} strokeWidth={1.75} />}
+            </button>
 
-          <button
-            className="flex flex-col justify-center gap-1.5 w-8 h-8"
-            onClick={() => setOpen((o) => !o)}
-            aria-label="Toggle menu"
-          >
-            <span className={`block h-0.5 transition-all duration-300 origin-center ${hamburgerColor} ${open ? "rotate-45 translate-y-2" : ""}`} />
-            <span className={`block h-0.5 transition-all duration-300 ${hamburgerColor} ${open ? "opacity-0" : ""}`} />
-            <span className={`block h-0.5 transition-all duration-300 origin-center ${hamburgerColor} ${open ? "-rotate-45 -translate-y-2" : ""}`} />
-          </button>
+            <button
+              className="flex flex-col justify-center gap-1.5 w-8 h-8"
+              onClick={() => setOpen((o) => !o)}
+              aria-label="Toggle menu"
+            >
+              <span className={`block h-0.5 transition-all duration-300 origin-center ${hamburgerColor} ${open ? "rotate-45 translate-y-2" : ""}`} />
+              <span className={`block h-0.5 transition-all duration-300 ${hamburgerColor} ${open ? "opacity-0" : ""}`} />
+              <span className={`block h-0.5 transition-all duration-300 origin-center ${hamburgerColor} ${open ? "-rotate-45 -translate-y-2" : ""}`} />
+            </button>
+          </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Mobile menu */}
-      <div className={`md:hidden overflow-hidden transition-all duration-300 ${open ? "max-h-64" : "max-h-0"}`}>
-        <ul className={`flex flex-col px-6 pb-4 gap-4 ${isHome ? "bg-black/40 backdrop-blur-sm" : ""}`}>
+      {/* Fullscreen mobile menu overlay — z-40, below the top bar */}
+      <div
+        className={`fixed inset-0 z-40 bg-white md:hidden flex flex-col items-center justify-center transition-opacity duration-300 ${
+          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <ul className="flex flex-col items-center gap-10">
           {links.map(({ href, label }) => (
             <li key={href}>
               <Link
                 href={href}
                 onClick={() => setOpen(false)}
-                className={`block font-display font-semibold text-sm tracking-wide uppercase transition-all ${linkClass(href)}`}
+                className={`font-display font-black italic text-5xl tracking-wide transition-colors duration-200 ${
+                  pathname === href
+                    ? "text-[var(--black)]"
+                    : "text-[var(--black)]/40 hover:text-[var(--black)]/80"
+                }`}
               >
                 {label}
               </Link>
@@ -135,6 +169,6 @@ export default function Nav() {
           ))}
         </ul>
       </div>
-    </nav>
+    </>
   );
 }
