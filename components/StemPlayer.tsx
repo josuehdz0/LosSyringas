@@ -180,14 +180,14 @@ export default function StemPlayer() {
     if (!started) {
       startAudio().then(() => setActive((prev) => {
         const next = new Set(prev);
-        next.has(id) ? next.delete(id) : next.add(id);
+        if (next.has(id)) { next.delete(id); } else { next.add(id); }
         return next;
       }));
       return;
     }
     setActive((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
       return next;
     });
   }
