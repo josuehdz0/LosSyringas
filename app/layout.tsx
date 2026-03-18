@@ -8,8 +8,14 @@ const fraunces = Fraunces({
   subsets: ["latin"],
   variable: "--font-display",
   weight: ["300", "400", "700", "900"],
-  style: ["italic"],
+  style: ["normal", "italic"],
 });
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
 
 export const metadata: Metadata = {
   title: "Los Syringas",

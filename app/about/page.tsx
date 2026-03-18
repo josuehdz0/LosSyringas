@@ -30,10 +30,9 @@ export default function About() {
       {/* Content */}
       <div className="bg-white px-8 pb-24">
         <div className="max-w-3xl mx-auto">
-          <h1 className="font-display font-extrabold italic text-5xl text-[var(--black)] mb-2">
+          <h1 className="font-display font-extrabold italic text-5xl text-[var(--black)] mb-8">
             About
           </h1>
-          <p className="text-[var(--blue)] mb-16">5 friends, Boise, ID.</p>
 
           {/* Bio */}
           <section className="mb-20">

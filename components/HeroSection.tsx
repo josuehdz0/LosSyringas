@@ -213,6 +213,11 @@ export default function HeroSection() {
     };
   }, [splashDone]);
 
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
   function handleEnter() {
     sessionEntered = true;
     setSplashDone(true);

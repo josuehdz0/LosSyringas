@@ -26,17 +26,19 @@ interface StemButtonProps {
   on: boolean;
   loading: boolean;
   circleRef: (el: HTMLDivElement | null) => void;
+  wrapperRef: (el: HTMLDivElement | null) => void;
   onToggle: () => void;
 }
 
-function StemButton({ label, image, on, loading, circleRef, onToggle }: StemButtonProps) {
+function StemButton({ label, image, on, loading, circleRef, wrapperRef, onToggle }: StemButtonProps) {
   return (
     <div
+      ref={wrapperRef}
       onClick={onToggle}
       className={`flex flex-col items-center cursor-pointer select-none ${loading ? "opacity-50 pointer-events-none" : ""}`}
     >
       <div className="relative w-full aspect-square md:w-24 md:h-24">
-        <div className="w-full h-full rounded-full overflow-hidden bg-white">
+        <div className="w-full h-full rounded-full overflow-hidden bg-white transition-transform duration-200 ease-out hover:scale-105 active:scale-95">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={image} alt={label} className="w-full h-full object-contain" />
         </div>
@@ -65,6 +67,7 @@ export default function StemPlayer() {
   const stemsRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const buttonRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const wrapperRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const glowTweens = useRef<Record<string, gsap.core.Tween | null>>({});
   const players = useRef<Record<string, Tone.Player>>({});
 
@@ -72,6 +75,11 @@ export default function StemPlayer() {
   const circleRefs = useRef(
     Object.fromEntries(
       stems.map(({ id }) => [id, (el: HTMLDivElement | null) => { buttonRefs.current[id] = el; }])
+    )
+  );
+  const wrapperRefCallbacks = useRef(
+    Object.fromEntries(
+      stems.map(({ id }) => [id, (el: HTMLDivElement | null) => { wrapperRefs.current[id] = el; }])
     )
   );
 
@@ -171,11 +179,11 @@ export default function StemPlayer() {
   }
 
   function handleToggle(id: string) {
-    const el = buttonRefs.current[id];
+    const el = wrapperRefs.current[id];
     if (el) {
       gsap.timeline()
-        .to(el, { scale: 0.88, duration: 0.1, ease: "power2.in" })
-        .to(el, { scale: 1, duration: 0.4, ease: "elastic.out(1, 0.4)" });
+        .to(el, { scale: 0.82, duration: 0.1, ease: "power2.in" })
+        .to(el, { scale: 1, duration: 0.5, ease: "elastic.out(1, 0.35)" });
     }
     if (!started) {
       startAudio().then(() => setActive((prev) => {
@@ -227,6 +235,7 @@ export default function StemPlayer() {
                 on={active.has(id)}
                 loading={loading}
                 circleRef={circleRefs.current[id]}
+                wrapperRef={wrapperRefCallbacks.current[id]}
                 onToggle={() => handleToggle(id)}
               />
             ))}

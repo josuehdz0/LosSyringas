@@ -92,8 +92,8 @@ export default function Nav() {
       {/* Top bar — transitions to white background when menu is open */}
       <nav
         ref={navRef}
-        className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 ${
-          open
+        className={`fixed top-0 left-0 right-0 z-[60] transition-colors duration-300 ${
+          open && !isHome
             ? "bg-white"
             : !isHome && scrolled
             ? "bg-white/90 backdrop-blur-md shadow-sm"
@@ -147,7 +147,7 @@ export default function Nav() {
 
       {/* Fullscreen mobile menu overlay — z-40, below the top bar */}
       <div
-        className={`fixed inset-0 z-40 bg-white md:hidden flex flex-col items-center justify-center transition-opacity duration-300 ${
+        className={`fixed inset-0 z-[55] bg-white md:hidden flex flex-col items-center justify-center transition-opacity duration-300 ${
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       >
