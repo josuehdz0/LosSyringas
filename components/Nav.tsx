@@ -114,7 +114,7 @@ export default function Nav() {
               <li key={href}>
                 <Link
                   href={href}
-                  className={`font-display font-semibold text-sm tracking-wide uppercase transition-all ${linkClass(href)}`}
+                  className={`font-display font-semibold italic text-sm tracking-wide uppercase transition-all ${linkClass(href)}`}
                 >
                   {label}
                 </Link>
