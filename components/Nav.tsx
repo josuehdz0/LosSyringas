@@ -22,6 +22,7 @@ export default function Nav() {
   const [muted, setMuted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navRef = useRef<HTMLElement>(null);
+  const muteButtonRef = useRef<HTMLButtonElement>(null);
   const isHome = pathname === "/";
 
   useGSAP(() => {
@@ -36,7 +37,21 @@ export default function Nav() {
 
   useEffect(() => {
     if (!isHome) { setVisible(true); return; }
-    function onEntered() { setVisible(true); }
+    function onEntered() {
+      setVisible(true);
+      const isMobile = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+      if (isMobile && muteButtonRef.current) {
+        setTimeout(() => {
+          gsap.timeline()
+            .to(muteButtonRef.current, { scale: 1.4, duration: 0.2, ease: "power2.out" })
+            .to(muteButtonRef.current, { scale: 1, duration: 0.3, ease: "elastic.out(1, 0.4)" })
+            .to(muteButtonRef.current, { scale: 1.4, duration: 0.2, ease: "power2.out", delay: 0.2 })
+            .to(muteButtonRef.current, { scale: 1, duration: 0.3, ease: "elastic.out(1, 0.4)" })
+            .to(muteButtonRef.current, { scale: 1.4, duration: 0.2, ease: "power2.out", delay: 0.2 })
+            .to(muteButtonRef.current, { scale: 1, duration: 0.3, ease: "elastic.out(1, 0.4)" });
+        }, 800);
+      }
+    }
     window.addEventListener("splashEntered", onEntered);
     return () => window.removeEventListener("splashEntered", onEntered);
   }, [isHome]);
@@ -100,7 +115,7 @@ export default function Nav() {
             : ""
         } ${!visible ? "opacity-0 pointer-events-none" : ""}`}
       >
-        <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center justify-between px-6 py-4" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>
           <Link href="/" onClick={() => setOpen(false)} aria-label="Los Syringas">
             <Logo
               className="h-8 w-auto transition-opacity hover:opacity-70"
@@ -125,6 +140,7 @@ export default function Nav() {
           {/* Mobile right — mute + hamburger */}
           <div className="md:hidden flex items-center gap-4">
             <button
+              ref={muteButtonRef}
               onClick={handleMute}
               aria-label="Toggle mute"
               className={`transition-all duration-300 ${iconColor} ${muted ? "opacity-40" : "opacity-100"}`}

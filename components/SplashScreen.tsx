@@ -47,6 +47,24 @@ export default function SplashScreen({ onEnter }: SplashScreenProps) {
 
   const [password, setPassword] = useState("");
 
+  // Force white background while splash is visible (overflow is owned by HeroSection)
+  useEffect(() => {
+    document.body.style.backgroundColor = "white";
+    document.documentElement.style.backgroundColor = "white";
+    return () => {
+      document.body.style.backgroundColor = "";
+      document.documentElement.style.backgroundColor = "";
+    };
+  }, []);
+
+  // Preload all flower images so first spawn has no lag
+  useEffect(() => {
+    FLOWERS.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
+
   useGSAP(() => {
     gsap.set(lineRef.current, { scaleX: 0 });
 
@@ -112,16 +130,40 @@ export default function SplashScreen({ onEnter }: SplashScreenProps) {
     }
 
     let lastX = -999, lastY = -999;
+
     function onMouseMove(e: MouseEvent) {
       const rect = container!.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       const dx = x - lastX, dy = y - lastY;
-      if (dx * dx + dy * dy < 900) return;
+      if (dx * dx + dy * dy < 600) return;
       lastX = x; lastY = y;
       spawnFlower(x, y, false);
     }
 
+    function onTouchMove(e: TouchEvent) {
+      const rect = container!.getBoundingClientRect();
+      for (let i = 0; i < e.touches.length; i++) {
+        const t = e.touches[i];
+        const x = t.clientX - rect.left;
+        const y = t.clientY - rect.top;
+        const dx = x - lastX, dy = y - lastY;
+        if (dx * dx + dy * dy < 400) continue;
+        lastX = x; lastY = y;
+        spawnFlower(x, y, false);
+      }
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      const rect = container!.getBoundingClientRect();
+      const t = e.touches[0];
+      const x = t.clientX - rect.left;
+      const y = t.clientY - rect.top;
+      lastX = x; lastY = y;
+      spawnFlower(x, y, false);
+    }
+
+    // Slow ambient spawns in the background regardless of touch
     let interval: ReturnType<typeof setInterval> | null = null;
     if (isMobile) {
       interval = setInterval(() => {
@@ -134,12 +176,16 @@ export default function SplashScreen({ onEnter }: SplashScreenProps) {
         } while (x > W * 0.3 && x < W * 0.7 && y > H * 0.35 && y < H * 0.72);
         spawnFlower(x, y, true);
       }, 750);
+      container.addEventListener("touchmove", onTouchMove, { passive: true });
+      container.addEventListener("touchstart", onTouchStart, { passive: true });
     } else {
       container.addEventListener("mousemove", onMouseMove);
     }
 
     return () => {
       container.removeEventListener("mousemove", onMouseMove);
+      container.removeEventListener("touchmove", onTouchMove);
+      container.removeEventListener("touchstart", onTouchStart);
       if (interval) clearInterval(interval);
     };
   }, []);
@@ -160,10 +206,16 @@ export default function SplashScreen({ onEnter }: SplashScreenProps) {
       return;
     }
 
-    // Correct — fade out and enter
+    // Blur input to dismiss keyboard and let iOS viewport settle before animating
+    inputRef.current?.blur();
+
+    // Correct — dispatch immediately while still inside user gesture (Safari AudioContext requirement)
+    onEnter();
+
+    // Then animate the overlay out
     gsap.killTweensOf(enterRef.current);
     activeFlowers.current.forEach((f) => gsap.killTweensOf(f));
-    gsap.timeline({ onComplete: onEnter })
+    gsap.timeline()
       .to(enterRef.current, { scale: 1.06, duration: 0.12, ease: "power2.out" })
       .to(overlayRef.current, { opacity: 0, duration: 0.85, ease: "power2.inOut" }, "-=0.05");
   }
@@ -185,7 +237,7 @@ export default function SplashScreen({ onEnter }: SplashScreenProps) {
   };
 
   return (
-    <div ref={overlayRef} className="fixed inset-0 z-[100] bg-white overflow-hidden">
+    <div ref={overlayRef} className="fixed inset-0 z-[100] bg-white overflow-hidden" style={{ cursor: "url('/Portraits/flowers/bee-40.png') 16 14, auto" }}>
       {/* Title */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <h1

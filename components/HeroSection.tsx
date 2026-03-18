@@ -220,25 +220,40 @@ export default function HeroSection() {
 
   function handleEnter() {
     sessionEntered = true;
-    setSplashDone(true);
+    // Dispatch immediately so audio starts within the user gesture context
     window.dispatchEvent(new Event("splashEntered"));
+    // Delay visual state until keyboard has fully dismissed and viewport settled
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      setSplashDone(true);
+      // Scroll again after React renders the canvas
+      requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      });
+    }, 350);
   }
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="relative flex items-center justify-center overflow-hidden" style={{ minHeight: "100dvh" }}>
+      {/* White backdrop behind splash so iOS keyboard gap never shows video */}
+      {!splashDone && <div className="fixed inset-0 z-[99] bg-white" />}
       {!splashDone && <SplashScreen onEnter={handleEnter} />}
 
-      <video ref={videoA} autoPlay muted playsInline className="absolute inset-0 w-full h-full object-cover" src="/hero.mp4" />
-      <video ref={videoB} muted playsInline className="absolute inset-0 w-full h-full object-cover" src="/hero.mp4" />
+      <video ref={videoA} autoPlay muted playsInline className="absolute inset-0 w-full object-cover" style={{ height: "100dvh" }} src="/hero.mp4" />
+      <video ref={videoB} muted playsInline className="absolute inset-0 w-full object-cover" style={{ height: "100dvh" }} src="/hero.mp4" />
 
       {/* Oscilloscope — absolutely positioned above the title, z between video and text */}
       {splashDone && (
         <canvas
           ref={canvasRef}
-          className="absolute pointer-events-none z-10 top-[4rem] md:top-[4.5rem]"
+          className="fixed pointer-events-none z-10 top-[4rem] md:top-[4.5rem]"
           style={{
             left: 0,
-            width: "100%",   // explicit 100% overrides the 300px canvas default
+            width: "100%",
             height: `${CANVAS_H}px`,
           }}
         />

@@ -46,7 +46,7 @@ function StemButton({ label, image, on, loading, circleRef, wrapperRef, onToggle
         <div ref={circleRef} className="absolute inset-0 rounded-full pointer-events-none" />
       </div>
       <span className={`mt-1.5 text-[10px] font-semibold uppercase tracking-wide leading-none transition-colors duration-200 ${
-        on ? "text-[var(--yellow)]" : "text-[var(--black)]/60"
+        on ? "text-[var(--yellow)]" : "md:text-[var(--black)]/60 max-md:invisible"
       }`}>
         {label}
       </span>
@@ -105,6 +105,12 @@ export default function StemPlayer() {
     window.addEventListener("splashEntered", onEntered);
     return () => window.removeEventListener("splashEntered", onEntered);
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (window.matchMedia("(hover: none) and (pointer: coarse)").matches) {
+      setMuted(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -224,7 +230,7 @@ export default function StemPlayer() {
     <>
       {/* Stems — home page only, single render, responsive grid */}
       {isHome && (
-        <div ref={stemsRef} className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-opacity duration-200 ${navMenuOpen ? "opacity-0 pointer-events-none" : ""}`}>
+        <div ref={stemsRef} className={`fixed left-1/2 -translate-x-1/2 z-50 transition-opacity duration-200 ${navMenuOpen ? "opacity-0 pointer-events-none" : ""}`} style={{ bottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
           <div className="grid grid-cols-3 w-[75vw] gap-x-3 gap-y-3 md:w-auto md:flex md:flex-row md:gap-4" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
             {stems.map(({ id, label, image }) => (
               <StemButton
