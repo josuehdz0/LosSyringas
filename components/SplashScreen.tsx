@@ -57,13 +57,6 @@ export default function SplashScreen({ onEnter }: SplashScreenProps) {
     };
   }, []);
 
-  // Preload all flower images so first spawn has no lag
-  useEffect(() => {
-    FLOWERS.forEach((src) => {
-      const img = new Image();
-      img.src = src;
-    });
-  }, []);
 
   useGSAP(() => {
     gsap.set(lineRef.current, { scaleX: 0 });
@@ -208,6 +201,10 @@ export default function SplashScreen({ onEnter }: SplashScreenProps) {
 
     // Blur input to dismiss keyboard and let iOS viewport settle before animating
     inputRef.current?.blur();
+
+    // Abort all in-flight flower image downloads to free bandwidth for audio
+    activeFlowers.current.forEach((f) => { f.src = ""; gsap.killTweensOf(f); f.remove(); });
+    activeFlowers.current = [];
 
     // Correct — dispatch immediately while still inside user gesture (Safari AudioContext requirement)
     onEnter();

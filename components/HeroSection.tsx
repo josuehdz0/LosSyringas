@@ -243,8 +243,8 @@ export default function HeroSection() {
       {!splashDone && <div className="fixed inset-0 z-[99] bg-white" />}
       {!splashDone && <SplashScreen onEnter={handleEnter} />}
 
-      <video ref={videoA} autoPlay muted playsInline className="absolute inset-0 w-full object-cover" style={{ height: "100dvh" }} src="/hero.mp4" />
-      <video ref={videoB} muted playsInline className="absolute inset-0 w-full object-cover" style={{ height: "100dvh" }} src="/hero.mp4" />
+      <video ref={videoA} autoPlay muted playsInline preload="metadata" className="absolute inset-0 w-full object-cover" style={{ height: "100dvh" }} src="/hero.mp4" />
+      <video ref={videoB} muted playsInline preload="none" className="absolute inset-0 w-full object-cover" style={{ height: "100dvh" }} src="/hero.mp4" />
 
       {/* Oscilloscope — absolutely positioned above the title, z between video and text */}
       {splashDone && (
