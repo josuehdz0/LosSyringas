@@ -36,8 +36,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${fraunces.variable} antialiased`}>
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
         <Nav />
         {children}
         <StemPlayer />

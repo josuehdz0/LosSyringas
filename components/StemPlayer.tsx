@@ -9,12 +9,12 @@ import * as Tone from "tone";
 import { stemAnalysers, setActiveStemIds, setIsMuted, setIsPlaying } from "@/lib/audioAnalysers";
 
 const stems = [
-  { id: "bass",       label: "Bass",        image: "/Portraits/Shawn.png",    file: "/stems/TSINFU demo flat_Bass.wav" },
-  { id: "drums",      label: "Drums",       image: "/Portraits/Luke.png",     file: "/stems/TSINFU demo flat_Drum Kit.wav" },
-  { id: "guitars",    label: "Guitars",     image: "/Portraits/Josue.png",    file: "/stems/TSINFU demo flat_Guitars.wav" },
-  { id: "keys",       label: "Keys",        image: "/Portraits/Josh.png",     file: "/stems/TSINFU demo flat_Keys and Pads.wav" },
-  { id: "percussion", label: "Percussion",  image: "/Portraits/Pearson.png",  file: "/stems/TSINFU demo flat_Percussion.wav" },
-  { id: "magic",      label: "Magic",       image: "/Portraits/Mushrooms.png",file: "/stems/TSINFU demo flat_Magic.wav" },
+  { id: "bass",       label: "Bass",        image: "/Portraits/Shawn.png",    file: "/stems/TSINFU demo flat_Bass.mp3" },
+  { id: "drums",      label: "Drums",       image: "/Portraits/Luke.png",     file: "/stems/TSINFU demo flat_Drum Kit.mp3" },
+  { id: "guitars",    label: "Guitars",     image: "/Portraits/Josue.png",    file: "/stems/TSINFU demo flat_Guitars.mp3" },
+  { id: "keys",       label: "Keys",        image: "/Portraits/Josh.png",     file: "/stems/TSINFU demo flat_Keys and Pads.mp3" },
+  { id: "percussion", label: "Percussion",  image: "/Portraits/Pearson.png",  file: "/stems/TSINFU demo flat_Percussion.mp3" },
+  { id: "magic",      label: "Magic",       image: "/Portraits/Mushrooms.png",file: "/stems/TSINFU demo flat_Magic.mp3" },
 ];
 
 let splashCleared = false;
@@ -70,6 +70,7 @@ export default function StemPlayer() {
   const wrapperRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const glowTweens = useRef<Record<string, gsap.core.Tween | null>>({});
   const players = useRef<Record<string, Tone.Player>>({});
+  const bridgeAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Stable ref callbacks — one per stem, never recreated
   const circleRefs = useRef(
@@ -108,13 +109,8 @@ export default function StemPlayer() {
   }, []);
 
   useEffect(() => {
-    if (window.matchMedia("(hover: none) and (pointer: coarse)").matches) {
-      setMuted(true);
-    }
-  }, []);
-
-  useEffect(() => {
     Tone.getDestination().mute = muted;
+    if (bridgeAudioRef.current) bridgeAudioRef.current.muted = muted;
     setIsMuted(muted);
     window.dispatchEvent(new CustomEvent("muteChange", { detail: { muted } }));
   }, [muted]);
@@ -166,22 +162,45 @@ export default function StemPlayer() {
 
   async function startAudio() {
     setLoading(true);
-    await Tone.start();
-    await Promise.all(
-      stems.map(({ id, file }) => {
-        const analyser = new Tone.Analyser("waveform", 256);
-        stemAnalysers[id] = analyser;
-        const player = new Tone.Player({ url: file, loop: true, mute: !active.has(id) });
-        player.connect(analyser);
-        analyser.toDestination();
-        players.current[id] = player;
-        return player.load(file);
-      })
-    );
-    const startTime = Tone.now() + 0.1;
-    stems.forEach(({ id }) => players.current[id].start(startTime));
-    setStarted(true);
-    setLoading(false);
+    try {
+      await Tone.start();
+
+      // Bridge Web Audio → HTML5 audio element to bypass iOS silent switch.
+      // HTML5 audio uses the media playback session (ignores hardware mute switch),
+      // the same way YouTube/Instagram work. We disconnect Tone from rawCtx.destination
+      // and route everything exclusively through the bridge element.
+      const rawCtx = Tone.getContext().rawContext as AudioContext;
+      const streamDest = rawCtx.createMediaStreamDestination();
+      const toneOut = (Tone.getDestination() as unknown as { output: AudioNode }).output;
+      if (toneOut) {
+        try { toneOut.disconnect(rawCtx.destination); } catch (_) {}
+        toneOut.connect(streamDest);
+      }
+      const bridge = new Audio();
+      bridge.srcObject = streamDest.stream;
+      bridge.muted = muted;
+      bridge.play().catch(() => {});
+      bridgeAudioRef.current = bridge;
+
+      await Promise.all(
+        stems.map(({ id, file }) => {
+          const analyser = new Tone.Analyser("waveform", 256);
+          stemAnalysers[id] = analyser;
+          const player = new Tone.Player({ loop: true, mute: !active.has(id) });
+          player.connect(analyser);
+          analyser.toDestination();
+          players.current[id] = player;
+          return player.load(file);
+        })
+      );
+      const startTime = Tone.now() + 0.1;
+      stems.forEach(({ id }) => players.current[id].start(startTime));
+      setStarted(true);
+    } catch (e) {
+      console.warn("Audio failed to start:", e);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleToggle(id: string) {

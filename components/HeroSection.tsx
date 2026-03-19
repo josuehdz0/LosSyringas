@@ -84,6 +84,7 @@ export default function HeroSection() {
       const timeLeft = top.duration - top.currentTime;
       if (timeLeft <= FADE_DURATION && !fading) {
         fading = true;
+        if (!bottom.src) bottom.src = "/hero.mp4";
         bottom.currentTime = 0;
         bottom.play();
         gsap.to(top, {
@@ -244,7 +245,7 @@ export default function HeroSection() {
       {!splashDone && <SplashScreen onEnter={handleEnter} />}
 
       <video ref={videoA} autoPlay muted playsInline className="absolute inset-0 w-full object-cover" style={{ height: "100dvh" }} src="/hero.mp4" />
-      <video ref={videoB} muted playsInline className="absolute inset-0 w-full object-cover" style={{ height: "100dvh" }} src="/hero.mp4" />
+      <video ref={videoB} muted playsInline className="absolute inset-0 w-full object-cover" style={{ height: "100dvh" }} />
 
       {/* Oscilloscope — absolutely positioned above the title, z between video and text */}
       {splashDone && (
