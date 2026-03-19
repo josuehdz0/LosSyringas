@@ -173,7 +173,7 @@ export default function StemPlayer() {
       const streamDest = rawCtx.createMediaStreamDestination();
       const toneOut = (Tone.getDestination() as unknown as { output: AudioNode }).output;
       if (toneOut) {
-        try { toneOut.disconnect(rawCtx.destination); } catch (_) {}
+        try { toneOut.disconnect(rawCtx.destination); } catch { /* ignore */ }
         toneOut.connect(streamDest);
       }
       const bridge = new Audio();
