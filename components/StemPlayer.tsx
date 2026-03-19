@@ -70,7 +70,7 @@ export default function StemPlayer() {
   const wrapperRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const glowTweens = useRef<Record<string, gsap.core.Tween | null>>({});
   const players = useRef<Record<string, Tone.Player>>({});
-  const bridgeAudio = useRef<HTMLAudioElement | null>(null);
+  const bridgeAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Stable ref callbacks — one per stem, never recreated
   const circleRefs = useRef(
@@ -110,7 +110,7 @@ export default function StemPlayer() {
 
   useEffect(() => {
     Tone.getDestination().mute = muted;
-    if (bridgeAudio.current) bridgeAudio.current.muted = muted;
+    if (bridgeAudioRef.current) bridgeAudioRef.current.muted = muted;
     setIsMuted(muted);
     window.dispatchEvent(new CustomEvent("muteChange", { detail: { muted } }));
   }, [muted]);
@@ -165,20 +165,22 @@ export default function StemPlayer() {
     try {
       await Tone.start();
 
-      // Bridge Web Audio → HTML5 <audio> element so iOS treats it as media playback,
-      // which bypasses the hardware silent switch (same as YouTube/Instagram).
-      // We disconnect Tone from rawCtx.destination and route exclusively through
-      // the bridge so audio only plays once.
+      // Bridge Web Audio → HTML5 audio element to bypass iOS silent switch.
+      // HTML5 audio uses the media playback session (ignores hardware mute switch),
+      // the same way YouTube/Instagram work. We disconnect Tone from rawCtx.destination
+      // and route everything exclusively through the bridge element.
       const rawCtx = Tone.getContext().rawContext as AudioContext;
       const streamDest = rawCtx.createMediaStreamDestination();
-      const toneOutput = (Tone.getDestination() as any).output as AudioNode;
-      try { toneOutput.disconnect(rawCtx.destination); } catch (_) {}
-      toneOutput.connect(streamDest);
+      const toneOut = (Tone.getDestination() as unknown as { output: AudioNode }).output;
+      if (toneOut) {
+        try { toneOut.disconnect(rawCtx.destination); } catch (_) {}
+        toneOut.connect(streamDest);
+      }
       const bridge = new Audio();
       bridge.srcObject = streamDest.stream;
       bridge.muted = muted;
       bridge.play().catch(() => {});
-      bridgeAudio.current = bridge;
+      bridgeAudioRef.current = bridge;
 
       await Promise.all(
         stems.map(({ id, file }) => {
