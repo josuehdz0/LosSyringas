@@ -142,12 +142,12 @@ export default function StemPlayer() {
       const rawCtx = Tone.getContext().rawContext as AudioContext;
       const bridge = bridgeAudioRef.current;
       if (document.hidden) {
-        // Silence output and pause bridge to stop any buffer glitching
+        // Silence output and pause bridge — do NOT suspend AudioContext, because
+        // on mobile Safari an explicit suspend requires a user gesture to resume,
+        // but visibilitychange is not one. Let iOS manage the context itself.
         Tone.getDestination().volume.value = -Infinity;
         if (bridge) bridge.pause();
-        rawCtx.suspend().catch(() => {});
       } else {
-        rawCtx.resume().catch(() => {});
         if (playingRef.current) {
           Tone.getDestination().volume.value = 0;
         }
@@ -155,6 +155,8 @@ export default function StemPlayer() {
           bridge.muted = !playingRef.current || muted;
           bridge.play().catch(() => {});
         }
+        // Resume in case iOS suspended the context itself while backgrounded
+        rawCtx.resume().catch(() => {});
       }
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
