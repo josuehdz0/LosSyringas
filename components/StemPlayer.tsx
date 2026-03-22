@@ -151,12 +151,13 @@ export default function StemPlayer() {
         if (bridge) bridge.muted = true;
         rawCtx.suspend().catch(() => {});
       } else {
-        // Bridge is still "playing" (just muted) so the audio session is alive —
-        // resume() should succeed without needing a user gesture.
-        rawCtx.resume().then(() => {
-          if (playingRef.current) Tone.getDestination().volume.value = 0;
-          if (bridge) bridge.muted = !playingRef.current || muted;
-        }).catch(() => {});
+        // Give iOS a moment to fully unfreeze before touching the AudioContext.
+        setTimeout(() => {
+          rawCtx.resume().then(() => {
+            if (playingRef.current) Tone.getDestination().volume.value = 0;
+            if (bridge) bridge.muted = !playingRef.current || muted;
+          }).catch(() => {});
+        }, 200);
       }
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
