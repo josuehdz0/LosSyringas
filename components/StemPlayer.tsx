@@ -142,10 +142,9 @@ export default function StemPlayer() {
       const rawCtx = Tone.getContext().rawContext as AudioContext;
       const bridge = bridgeAudioRef.current;
       if (document.hidden) {
-        // Silence output but keep bridge playing — pausing it would require a user
-        // gesture to restart on iOS, breaking auto-resume when returning to the app.
+        // Silence output and pause bridge to stop any buffer glitching
         Tone.getDestination().volume.value = -Infinity;
-        if (bridge) bridge.muted = true;
+        if (bridge) bridge.pause();
         rawCtx.suspend().catch(() => {});
       } else {
         rawCtx.resume().catch(() => {});
@@ -154,6 +153,7 @@ export default function StemPlayer() {
         }
         if (bridge) {
           bridge.muted = !playingRef.current || muted;
+          bridge.play().catch(() => {});
         }
       }
     }
