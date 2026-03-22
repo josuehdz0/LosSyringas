@@ -144,13 +144,17 @@ export default function StemPlayer() {
       const rawCtx = Tone.getContext().rawContext as AudioContext;
       const bridge = bridgeAudioRef.current;
       if (document.hidden) {
+        // Mute bridge directly so iOS audio session plays silence (not glitchy audio).
+        // Suspend context to stop throttling damage. Don't pause bridge — pausing
+        // requires a user gesture to restart on iOS; muting does not.
         Tone.getDestination().volume.value = -Infinity;
+        if (bridge) bridge.muted = true;
         rawCtx.suspend().catch(() => {});
       } else {
+        // Bridge is still "playing" (just muted) so the audio session is alive —
+        // resume() should succeed without needing a user gesture.
         rawCtx.resume().then(() => {
-          if (playingRef.current) {
-            Tone.getDestination().volume.value = 0;
-          }
+          if (playingRef.current) Tone.getDestination().volume.value = 0;
           if (bridge) bridge.muted = !playingRef.current || muted;
         }).catch(() => {});
       }
