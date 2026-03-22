@@ -133,20 +133,26 @@ export default function StemPlayer() {
     return () => window.removeEventListener("navMenuChange", onNavMenuChange);
   }, []);
 
-  // When the page is hidden: silence output so the background glitch is inaudible.
-  // Do NOT suspend the AudioContext or pause the bridge — on mobile Safari those
-  // require a user gesture to undo, which visibilitychange is not.
-  // Keeping the bridge alive preserves the audio session so volume can be
-  // restored immediately when the user returns, with no interaction required.
+  // When the page is hidden: suspend the AudioContext (stops the fast-loop glitch)
+  // but leave the bridge element playing — pausing it requires a user gesture to
+  // restart on iOS, which visibilitychange is not. The bridge plays silence while
+  // the context is suspended, keeping the audio session alive.
+  // On return: wait for resume() to fully resolve before restoring volume.
   useEffect(() => {
     function onVisibilityChange() {
       if (!started) return;
+      const rawCtx = Tone.getContext().rawContext as AudioContext;
+      const bridge = bridgeAudioRef.current;
       if (document.hidden) {
         Tone.getDestination().volume.value = -Infinity;
+        rawCtx.suspend().catch(() => {});
       } else {
-        if (playingRef.current && !muted) {
-          Tone.getDestination().volume.value = 0;
-        }
+        rawCtx.resume().then(() => {
+          if (playingRef.current) {
+            Tone.getDestination().volume.value = 0;
+          }
+          if (bridge) bridge.muted = !playingRef.current || muted;
+        }).catch(() => {});
       }
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
