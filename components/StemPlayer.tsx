@@ -133,27 +133,19 @@ export default function StemPlayer() {
     return () => window.removeEventListener("navMenuChange", onNavMenuChange);
   }, []);
 
-  // When the page is hidden (tab switch, app background): mute everything to
-  // prevent Safari fast-loop glitch and Chrome pitch-shift from throttling.
-  // Restore when returning, respecting the user's manual play/mute state.
+  // When the page is hidden: silence output so the background glitch is inaudible.
+  // Do NOT suspend the AudioContext or pause the bridge — on mobile Safari those
+  // require a user gesture to undo, which visibilitychange is not.
+  // Keeping the bridge alive preserves the audio session so volume can be
+  // restored immediately when the user returns, with no interaction required.
   useEffect(() => {
     function onVisibilityChange() {
       if (!started) return;
-      const rawCtx = Tone.getContext().rawContext as AudioContext;
-      const bridge = bridgeAudioRef.current;
       if (document.hidden) {
-        // Silence output and pause bridge to stop any buffer glitching
         Tone.getDestination().volume.value = -Infinity;
-        if (bridge) bridge.pause();
-        rawCtx.suspend().catch(() => {});
       } else {
-        rawCtx.resume().catch(() => {});
-        if (playingRef.current) {
+        if (playingRef.current && !muted) {
           Tone.getDestination().volume.value = 0;
-        }
-        if (bridge) {
-          bridge.muted = !playingRef.current || muted;
-          bridge.play().catch(() => {});
         }
       }
     }
