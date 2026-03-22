@@ -3,6 +3,7 @@ import { Fraunces, DM_Sans } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import StemPlayer from "@/components/StemPlayer";
+import { Analytics } from "@vercel/analytics/next";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -45,6 +46,7 @@ export default function RootLayout({
         <Nav />
         {children}
         <StemPlayer />
+        <Analytics />
       </body>
     </html>
   );
