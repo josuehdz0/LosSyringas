@@ -4,7 +4,7 @@ import { useRef, useEffect, useState } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import SplashScreen from "./SplashScreen";
-import { stemAnalysers, getActiveStemIds, getIsMuted } from "@/lib/audioAnalysers";
+import { stemAnalysers, getActiveStemIds, getIsMuted, getIsPlaying } from "@/lib/audioAnalysers";
 
 const FADE_DURATION = 1.0;
 // Top → bottom display order
@@ -133,6 +133,7 @@ export default function HeroSection() {
 
       const activeIds = getActiveStemIds();
       const muted = getIsMuted();
+      const isPlaying = getIsPlaying();
 
       // Tighter spacing on mobile
       const mobile = window.innerWidth < 768;
@@ -156,12 +157,18 @@ export default function HeroSection() {
         // Temporal smoothing of audio data
         const analyser = stemAnalysers[id];
         let drawData: Float32Array;
-        if (!analyser || muted || !activeIds.has(id)) {
+        if (muted || !activeIds.has(id)) {
+          // Muted: decay toward flat
           const len = 256;
           if (!smoothedData.current[id]) smoothedData.current[id] = new Float32Array(len);
           const s = smoothedData.current[id];
           for (let j = 0; j < len; j++) s[j] *= 0.85;
           drawData = s;
+        } else if (!isPlaying || !analyser) {
+          // Paused: freeze — don't update smoothedData, just redraw as-is
+          const len = 256;
+          if (!smoothedData.current[id]) smoothedData.current[id] = new Float32Array(len);
+          drawData = smoothedData.current[id];
         } else {
           const raw = analyser.getValue() as Float32Array;
           if (!smoothedData.current[id]) {

@@ -24,6 +24,9 @@ export default function Nav() {
   const navRef = useRef<HTMLElement>(null);
   const muteButtonRef = useRef<HTMLButtonElement>(null);
   const isHome = pathname === "/";
+  // Pages with a full-bleed hero photo — nav should be white text when not scrolled
+  const hasHero = pathname === "/music";
+  const useWhiteText = isHome || (hasHero && !scrolled);
 
   useGSAP(() => {
     if (!visible) return;
@@ -77,30 +80,30 @@ export default function Nav() {
     return () => window.removeEventListener("muteChange", onMuteChange);
   }, []);
 
-  function handleMute() {
+function handleMute() {
     const next = !muted;
     setMuted(next);
     window.dispatchEvent(new CustomEvent("muteToggle", { detail: { muted: next } }));
   }
 
-  function linkClass(href: string) {
+function linkClass(href: string) {
     const active = pathname === href;
-    if (isHome) {
+    if (useWhiteText) {
       return active
         ? "text-[var(--black)] bg-white/90 px-3 py-1 rounded-full"
         : "text-white hover:text-white/70";
     }
     return active
-      ? "text-[var(--blue)]"
+      ? "text-[var(--black)] bg-white/90 px-3 py-1 rounded-full"
       : "text-[var(--black)] hover:text-[var(--blue)]";
   }
 
   // When menu is open, everything in the top bar goes dark
-  const logoFill = open ? "var(--black)" : (isHome ? "white" : "var(--black)");
+  const logoFill = open ? "var(--black)" : (useWhiteText ? "white" : "var(--black)");
   const iconColor = open
     ? "text-[var(--black)]"
-    : (isHome ? "text-white" : "text-[var(--black)]");
-  const hamburgerColor = open ? "bg-[var(--black)]" : (isHome ? "bg-white" : "bg-[var(--black)]");
+    : (useWhiteText ? "text-white" : "text-[var(--black)]");
+  const hamburgerColor = open ? "bg-[var(--black)]" : (useWhiteText ? "bg-white" : "bg-[var(--black)]");
 
   return (
     <>
@@ -115,7 +118,7 @@ export default function Nav() {
             : ""
         } ${!visible ? "opacity-0 pointer-events-none" : ""}`}
       >
-        <div className="flex items-center justify-between px-6 py-4" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>
+        <div className="max-w-5xl mx-auto w-full flex items-center justify-between px-6 md:px-12 py-4" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>
           <Link href="/" onClick={() => setOpen(false)} aria-label="Los Syringas">
             <Logo
               className="h-8 w-auto transition-opacity hover:opacity-70"

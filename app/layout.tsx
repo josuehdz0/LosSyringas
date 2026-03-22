@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces } from "next/font/google";
+import { Fraunces, DM_Sans } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import StemPlayer from "@/components/StemPlayer";
@@ -9,6 +9,12 @@ const fraunces = Fraunces({
   variable: "--font-display",
   weight: ["300", "400", "700", "900"],
   style: ["normal", "italic"],
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-body",
+  weight: ["400", "500", "600", "700"],
 });
 
 export const viewport = {
@@ -35,7 +41,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${fraunces.variable} antialiased`}>
+      <body className={`${fraunces.variable} ${dmSans.variable} antialiased`}>
         <Nav />
         {children}
         <StemPlayer />

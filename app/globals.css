@@ -23,7 +23,7 @@ html {
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: var(--font-body), "Helvetica Neue", Helvetica, Arial, sans-serif;
   overflow-x: hidden;
 }
 

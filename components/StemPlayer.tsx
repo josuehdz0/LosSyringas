@@ -71,6 +71,7 @@ export default function StemPlayer() {
   const glowTweens = useRef<Record<string, gsap.core.Tween | null>>({});
   const players = useRef<Record<string, Tone.Player>>({});
   const bridgeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const playingRef = useRef(true); // mirrors playing state for use in event listeners
 
   // Stable ref callbacks — one per stem, never recreated
   const circleRefs = useRef(
@@ -123,6 +124,7 @@ export default function StemPlayer() {
     return () => window.removeEventListener("muteToggle", onMuteToggle);
   }, []);
 
+
   useEffect(() => {
     function onNavMenuChange(e: Event) {
       setNavMenuOpen((e as CustomEvent<{ open: boolean }>).detail.open);
@@ -130,6 +132,37 @@ export default function StemPlayer() {
     window.addEventListener("navMenuChange", onNavMenuChange);
     return () => window.removeEventListener("navMenuChange", onNavMenuChange);
   }, []);
+
+  // When the page is hidden: suspend the AudioContext (stops the fast-loop glitch)
+  // but leave the bridge element playing — pausing it requires a user gesture to
+  // restart on iOS, which visibilitychange is not. The bridge plays silence while
+  // the context is suspended, keeping the audio session alive.
+  // On return: wait for resume() to fully resolve before restoring volume.
+  useEffect(() => {
+    function onVisibilityChange() {
+      if (!started) return;
+      const rawCtx = Tone.getContext().rawContext as AudioContext;
+      const bridge = bridgeAudioRef.current;
+      if (document.hidden) {
+        // Mute bridge directly so iOS audio session plays silence (not glitchy audio).
+        // Suspend context to stop throttling damage. Don't pause bridge — pausing
+        // requires a user gesture to restart on iOS; muting does not.
+        Tone.getDestination().volume.value = -Infinity;
+        if (bridge) bridge.muted = true;
+        rawCtx.suspend().catch(() => {});
+      } else {
+        // Give iOS a moment to fully unfreeze before touching the AudioContext.
+        setTimeout(() => {
+          rawCtx.resume().then(() => {
+            if (playingRef.current) Tone.getDestination().volume.value = 0;
+            if (bridge) bridge.muted = !playingRef.current || muted;
+          }).catch(() => {});
+        }, 200);
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [started, muted]);
 
   useEffect(() => {
     setActiveStemIds(active);
@@ -231,8 +264,20 @@ export default function StemPlayer() {
       .to(btn, { scale: 0.88, duration: 0.1, ease: "power2.in" })
       .to(btn, { scale: 1, duration: 0.4, ease: "elastic.out(1, 0.4)" });
     if (!started) { await startAudio(); return; }
-    const rawCtx = Tone.getContext().rawContext as AudioContext;
-    if (playing) { await rawCtx.suspend(); } else { await rawCtx.resume(); }
+    // Mute/unmute volume instead of suspending AudioContext — avoids Tone.js
+    // clock desync that causes the "slowed down then rushing" glitch on resume.
+    const dest = Tone.getDestination();
+    if (playing) {
+      dest.volume.value = -Infinity;
+      if (bridgeAudioRef.current) bridgeAudioRef.current.muted = true;
+    } else {
+      dest.volume.value = 0;
+      if (bridgeAudioRef.current) {
+        bridgeAudioRef.current.muted = muted;
+        bridgeAudioRef.current.play().catch(() => {});
+      }
+    }
+    playingRef.current = !playing;
     setIsPlaying(!playing);
     setPlaying((p) => !p);
   }

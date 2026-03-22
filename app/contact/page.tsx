@@ -1,56 +1,97 @@
+import { FaSpotify, FaYoutube, FaInstagram } from "react-icons/fa";
+import ParallaxHero from "@/components/ParallaxHero";
+import { SiApplemusic } from "react-icons/si";
+
 const socials = [
-  { label: "Instagram", href: "https://www.instagram.com/los_syringas/" },
-  { label: "Spotify", href: "https://open.spotify.com/artist/4RppgAwCPBVdc8tIWbG1mq" },
-  { label: "Apple Music", href: "https://music.apple.com/us/artist/los-syringas/1577434599" },
-  { label: "YouTube", href: "https://www.youtube.com/channel/UCyfT8ed-aDBN6lg1gixJCyQ" },
+  {
+    label: "Instagram",
+    href: "https://www.instagram.com/los_syringas/",
+    icon: FaInstagram,
+    color: "#E1306C",
+  },
+  {
+    label: "Spotify",
+    href: "https://open.spotify.com/artist/4RppgAwCPBVdc8tIWbG1mq",
+    icon: FaSpotify,
+    color: "#1DB954",
+  },
+  {
+    label: "Apple Music",
+    href: "https://music.apple.com/us/artist/los-syringas/1577434599",
+    icon: SiApplemusic,
+    color: "#FC3C44",
+  },
+  {
+    label: "YouTube",
+    href: "https://www.youtube.com/channel/UCyfT8ed-aDBN6lg1gixJCyQ",
+    icon: FaYoutube,
+    color: "#FF0000",
+  },
 ];
 
 export default function Contact() {
   return (
-    <main className="min-h-screen bg-white pt-24 px-8 pb-24 flex items-center">
-      <div className="max-w-2xl mx-auto w-full">
-        <h1 className="font-display font-extrabold italic text-5xl text-[var(--black)] mb-2">
-          Contact
-        </h1>
-        <p className="text-[var(--blue)] mb-16">Let&apos;s make something happen.</p>
+    <main className="bg-white min-h-screen">
+      <ParallaxHero
+        src="/band-photos/Contact-Hero.JPG"
+        srcDesktop="/band-photos/Contact-Hero-Desktop.JPG"
+        alt="Los Syringas contact"
+        objectPosition="object-top"
+      />
 
-        {/* Booking CTA */}
-        <section className="mb-16 bg-[var(--black)] rounded-3xl p-10 text-center">
-          <p className="text-white/50 text-sm uppercase tracking-widest mb-4">Bookings</p>
-          <p className="font-display font-bold text-2xl text-white mb-8">
-            Want us to play for your event?
-          </p>
-          <a
-            href="mailto:lossyringas@gmail.com"
-            className="inline-block font-semibold text-sm uppercase tracking-wide px-8 py-3 bg-[var(--yellow)] text-[var(--black)] rounded-full hover:bg-[var(--green)] transition-colors"
-          >
-            Email Us
-          </a>
-          <p className="text-white/30 text-sm mt-4">lossyringas@gmail.com</p>
-        </section>
+      <div className="bg-white pb-24">
+        <div className="max-w-5xl mx-auto px-6 md:px-12">
 
-        {/* Socials */}
-        <section>
-          <h2 className="font-display font-bold text-lg text-[var(--black)] uppercase tracking-wide mb-6">
-            Find Us Online
-          </h2>
-          <div className="flex flex-col gap-3">
-            {socials.map(({ label, href }) => (
-              <a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between px-6 py-4 border border-[var(--black)]/15 rounded-xl hover:border-[var(--blue)] hover:bg-[var(--blue)]/5 transition-all"
-              >
-                <span className="font-display font-semibold text-[var(--black)]">
-                  {label}
-                </span>
-                <span className="text-[var(--black)]/30 text-sm">→</span>
-              </a>
-            ))}
+          {/* Two-column layout on desktop */}
+          <div className="md:grid md:grid-cols-2 md:gap-16">
+
+            {/* Left — Booking */}
+            <div className="mb-12 md:mb-0">
+              <h2 className="font-display font-bold italic text-2xl text-[var(--black)] mb-4">
+                Bookings
+              </h2>
+              <div className="bg-[var(--black)] rounded-3xl p-8">
+                <p className="text-white/40 text-xs uppercase tracking-widest mb-3">
+                  Weddings · Concerts · Private Events
+                </p>
+                <p className="font-semibold text-xl text-white mb-6 leading-snug">
+                  Want us to play for your event?
+                </p>
+                <a
+                  href="mailto:lossyringas@gmail.com"
+                  className="block w-full text-center font-semibold text-sm uppercase tracking-wide px-8 py-4 bg-[var(--yellow)] text-[var(--black)] rounded-2xl hover:bg-[var(--green)] transition-colors"
+                >
+                  Email Us
+                </a>
+                <p className="text-white/30 text-sm mt-5">lossyringas@gmail.com</p>
+              </div>
+            </div>
+
+            {/* Right — Find Us Online */}
+            <div>
+              <h2 className="font-display font-bold italic text-2xl text-[var(--black)] mb-4">
+                Find Us Online
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                {socials.map(({ label, href, icon: Icon, color }) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-col items-center justify-center gap-3 py-8 border border-[var(--black)]/10 rounded-2xl hover:border-[var(--black)]/20 hover:bg-[var(--black)]/[0.02] transition-all"
+                  >
+                    <Icon size={36} style={{ color }} />
+                    <span className="text-xs font-semibold text-[var(--black)]/50 uppercase tracking-wide">
+                      {label}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+
           </div>
-        </section>
+        </div>
       </div>
     </main>
   );
