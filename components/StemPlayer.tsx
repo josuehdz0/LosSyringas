@@ -124,32 +124,6 @@ export default function StemPlayer() {
     return () => window.removeEventListener("muteToggle", onMuteToggle);
   }, []);
 
-  useEffect(() => {
-    function onPlayingToggle() {
-      if (!started) return;
-      const rawCtx = Tone.getContext().rawContext as AudioContext;
-      const dest = Tone.getDestination();
-      const next = !playingRef.current;
-      if (!next) {
-        dest.volume.value = -Infinity;
-        if (bridgeAudioRef.current) bridgeAudioRef.current.muted = true;
-      } else {
-        // Resume AudioContext in case it was suspended while backgrounded
-        rawCtx.resume().catch(() => {});
-        dest.volume.value = 0;
-        if (bridgeAudioRef.current) {
-          bridgeAudioRef.current.muted = muted;
-        }
-      }
-      playingRef.current = next;
-      setIsPlaying(next);
-      setPlaying(next);
-      window.dispatchEvent(new CustomEvent("playingChange", { detail: { playing: next } }));
-    }
-    window.addEventListener("playingToggle", onPlayingToggle);
-    return () => window.removeEventListener("playingToggle", onPlayingToggle);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [started, muted]);
 
   useEffect(() => {
     function onNavMenuChange(e: Event) {
@@ -168,10 +142,9 @@ export default function StemPlayer() {
       const rawCtx = Tone.getContext().rawContext as AudioContext;
       const bridge = bridgeAudioRef.current;
       if (document.hidden) {
-        // Silence output — mute bridge instead of pausing so iOS doesn't require
-        // a user gesture to resume playback when the user returns.
+        // Silence output and pause bridge to stop any buffer glitching
         Tone.getDestination().volume.value = -Infinity;
-        if (bridge) bridge.muted = true;
+        if (bridge) bridge.pause();
         rawCtx.suspend().catch(() => {});
       } else {
         rawCtx.resume().catch(() => {});
@@ -180,6 +153,7 @@ export default function StemPlayer() {
         }
         if (bridge) {
           bridge.muted = !playingRef.current || muted;
+          bridge.play().catch(() => {});
         }
       }
     }
@@ -303,7 +277,6 @@ export default function StemPlayer() {
     playingRef.current = !playing;
     setIsPlaying(!playing);
     setPlaying((p) => !p);
-    window.dispatchEvent(new CustomEvent("playingChange", { detail: { playing: !playing } }));
   }
 
   function handleMute(e: React.MouseEvent<HTMLButtonElement>) {
