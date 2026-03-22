@@ -126,17 +126,19 @@ export default function StemPlayer() {
 
   useEffect(() => {
     function onPlayingToggle() {
-      // Simulate a click on the play/pause button by triggering handlePlayPause logic
+      if (!started) return;
+      const rawCtx = Tone.getContext().rawContext as AudioContext;
       const dest = Tone.getDestination();
       const next = !playingRef.current;
       if (!next) {
         dest.volume.value = -Infinity;
         if (bridgeAudioRef.current) bridgeAudioRef.current.muted = true;
       } else {
+        // Resume AudioContext in case it was suspended while backgrounded
+        rawCtx.resume().catch(() => {});
         dest.volume.value = 0;
         if (bridgeAudioRef.current) {
           bridgeAudioRef.current.muted = muted;
-          bridgeAudioRef.current.play().catch(() => {});
         }
       }
       playingRef.current = next;
@@ -147,7 +149,7 @@ export default function StemPlayer() {
     window.addEventListener("playingToggle", onPlayingToggle);
     return () => window.removeEventListener("playingToggle", onPlayingToggle);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [muted]);
+  }, [started, muted]);
 
   useEffect(() => {
     function onNavMenuChange(e: Event) {
@@ -166,9 +168,10 @@ export default function StemPlayer() {
       const rawCtx = Tone.getContext().rawContext as AudioContext;
       const bridge = bridgeAudioRef.current;
       if (document.hidden) {
-        // Silence output and pause bridge to stop any buffer glitching
+        // Silence output — mute bridge instead of pausing so iOS doesn't require
+        // a user gesture to resume playback when the user returns.
         Tone.getDestination().volume.value = -Infinity;
-        if (bridge) bridge.pause();
+        if (bridge) bridge.muted = true;
         rawCtx.suspend().catch(() => {});
       } else {
         rawCtx.resume().catch(() => {});
@@ -177,7 +180,6 @@ export default function StemPlayer() {
         }
         if (bridge) {
           bridge.muted = !playingRef.current || muted;
-          bridge.play().catch(() => {});
         }
       }
     }
