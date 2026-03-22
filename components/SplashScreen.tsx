@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 
@@ -30,7 +30,7 @@ const FLOWERS = [
   "/Portraits/flowers/IMG_9317.png",
 ];
 
-// const PASSWORD = "TSINFU2026"; // DISABLED — restore to re-enable password
+const PASSWORD = "TSINFU2026";
 
 function randomFlower() {
   return FLOWERS[Math.floor(Math.random() * FLOWERS.length)];
@@ -43,6 +43,8 @@ export default function SplashScreen({ onEnter }: SplashScreenProps) {
   const lineRef = useRef<HTMLSpanElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const activeFlowers = useRef<HTMLImageElement[]>([]);
+
+  const [password, setPassword] = useState("");
 
   // Force white background while splash is visible (overflow is owned by HeroSection)
   useEffect(() => {
@@ -183,19 +185,52 @@ export default function SplashScreen({ onEnter }: SplashScreenProps) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    if (password !== PASSWORD) {
+      // Shake the form and clear
+      gsap.killTweensOf(inputRef.current);
+      gsap.timeline()
+        .to(inputRef.current, { x: -10, duration: 0.07, ease: "power2.out" })
+        .to(inputRef.current, { x: 10, duration: 0.07 })
+        .to(inputRef.current, { x: -7, duration: 0.07 })
+        .to(inputRef.current, { x: 7, duration: 0.07 })
+        .to(inputRef.current, { x: 0, duration: 0.07, ease: "power2.inOut" });
+      setPassword("");
+      return;
+    }
+
+    // Blur input to dismiss keyboard and let iOS viewport settle before animating
+    inputRef.current?.blur();
+
     // Abort all in-flight flower image downloads to free bandwidth for audio
     activeFlowers.current.forEach((f) => { f.src = ""; gsap.killTweensOf(f); f.remove(); });
     activeFlowers.current = [];
 
-    // Dispatch immediately while still inside user gesture (Safari AudioContext requirement)
+    // Correct — dispatch immediately while still inside user gesture (Safari AudioContext requirement)
     onEnter();
 
-    // Animate the overlay out
+    // Then animate the overlay out
     gsap.killTweensOf(enterRef.current);
+    activeFlowers.current.forEach((f) => gsap.killTweensOf(f));
     gsap.timeline()
       .to(enterRef.current, { scale: 1.06, duration: 0.12, ease: "power2.out" })
       .to(overlayRef.current, { opacity: 0, duration: 0.85, ease: "power2.inOut" }, "-=0.05");
   }
+
+  const inputStyle: React.CSSProperties = {
+    fontSize: "clamp(0.65rem, 1.5vw, 0.85rem)",
+    fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+    fontWeight: 500,
+    letterSpacing: "0.2em",
+    width: "110px",
+    paddingBottom: "4px",
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: "clamp(0.55rem, 1.2vw, 0.72rem)",
+    fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+    fontWeight: 500,
+    letterSpacing: "0.25em",
+  };
 
   return (
     <div ref={overlayRef} className="fixed inset-0 z-[100] bg-white overflow-hidden" style={{ cursor: "url('/Portraits/flowers/bee-40.png') 16 14, auto" }}>
@@ -218,9 +253,29 @@ export default function SplashScreen({ onEnter }: SplashScreenProps) {
         <form
           ref={formRef}
           onSubmit={handleSubmit}
-          className="flex flex-col items-center"
+          className="flex flex-col items-center gap-5"
           style={{ opacity: 0, transform: "translateY(10px)" }}
         >
+          {/* Password input */}
+          <div className="flex flex-col items-center gap-1.5">
+            <span className="text-[var(--black)]/40 uppercase" style={labelStyle}>
+              Password
+            </span>
+            <input
+              ref={inputRef}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              className="bg-transparent border-b border-[var(--black)]/40 text-center text-[var(--black)] outline-none focus:border-[var(--black)] transition-colors duration-200 placeholder:text-[var(--black)]/20"
+              placeholder="••••••••••"
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Enter button */}
           <button
             ref={enterRef}
             type="submit"

@@ -125,6 +125,31 @@ export default function StemPlayer() {
   }, []);
 
   useEffect(() => {
+    function onPlayingToggle() {
+      // Simulate a click on the play/pause button by triggering handlePlayPause logic
+      const dest = Tone.getDestination();
+      const next = !playingRef.current;
+      if (!next) {
+        dest.volume.value = -Infinity;
+        if (bridgeAudioRef.current) bridgeAudioRef.current.muted = true;
+      } else {
+        dest.volume.value = 0;
+        if (bridgeAudioRef.current) {
+          bridgeAudioRef.current.muted = muted;
+          bridgeAudioRef.current.play().catch(() => {});
+        }
+      }
+      playingRef.current = next;
+      setIsPlaying(next);
+      setPlaying(next);
+      window.dispatchEvent(new CustomEvent("playingChange", { detail: { playing: next } }));
+    }
+    window.addEventListener("playingToggle", onPlayingToggle);
+    return () => window.removeEventListener("playingToggle", onPlayingToggle);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [muted]);
+
+  useEffect(() => {
     function onNavMenuChange(e: Event) {
       setNavMenuOpen((e as CustomEvent<{ open: boolean }>).detail.open);
     }
@@ -276,6 +301,7 @@ export default function StemPlayer() {
     playingRef.current = !playing;
     setIsPlaying(!playing);
     setPlaying((p) => !p);
+    window.dispatchEvent(new CustomEvent("playingChange", { detail: { playing: !playing } }));
   }
 
   function handleMute(e: React.MouseEvent<HTMLButtonElement>) {

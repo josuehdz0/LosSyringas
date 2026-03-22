@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, Play, Pause } from "lucide-react";
 import Logo from "./Logo";
 
 const links = [
@@ -20,6 +20,7 @@ export default function Nav() {
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [playing, setPlaying] = useState(true);
   const [scrolled, setScrolled] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   const muteButtonRef = useRef<HTMLButtonElement>(null);
@@ -80,10 +81,22 @@ export default function Nav() {
     return () => window.removeEventListener("muteChange", onMuteChange);
   }, []);
 
+  useEffect(() => {
+    function onPlayingChange(e: Event) {
+      setPlaying((e as CustomEvent<{ playing: boolean }>).detail.playing);
+    }
+    window.addEventListener("playingChange", onPlayingChange);
+    return () => window.removeEventListener("playingChange", onPlayingChange);
+  }, []);
+
   function handleMute() {
     const next = !muted;
     setMuted(next);
     window.dispatchEvent(new CustomEvent("muteToggle", { detail: { muted: next } }));
+  }
+
+  function handlePlayPause() {
+    window.dispatchEvent(new CustomEvent("playingToggle"));
   }
 
   function linkClass(href: string) {
@@ -140,8 +153,15 @@ export default function Nav() {
             ))}
           </ul>
 
-          {/* Mobile right — mute + hamburger */}
+          {/* Mobile right — play/pause + mute + hamburger */}
           <div className="md:hidden flex items-center gap-4">
+            <button
+              onClick={handlePlayPause}
+              aria-label="Toggle play/pause"
+              className={`transition-all duration-300 ${iconColor} opacity-100`}
+            >
+              {playing ? <Pause size={20} strokeWidth={1.75} /> : <Play size={20} strokeWidth={1.75} />}
+            </button>
             <button
               ref={muteButtonRef}
               onClick={handleMute}
