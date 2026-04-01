@@ -13,10 +13,9 @@ interface Release {
 const releases: Release[] = [
   {
     title: "This Song Is Not For You",
-    label: "Coming Soon",
-    spotify: null,
-    appleMusic: null,
-    youtube: null,
+    spotify: "https://open.spotify.com/track/6V2FdnOp4Wo7TSBJjubQ3a?si=6ebe1ccc6d3d4e28",
+    appleMusic: "https://music.apple.com/us/album/this-song-is-not-for-you/1886643216?i=1886643217",
+    youtube: "https://www.youtube.com/watch?v=CYZ-HAIRgFk",
   },
   {
     title: "Fish",
