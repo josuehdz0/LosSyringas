@@ -42,37 +42,10 @@
   pointer-events: none;
 }
 
-/* Wall controls, sitting under the site nav. */
-/* Same column as the site nav: max-w-5xl, px-6 / md:px-12. */
-.sticky-wall .top {
-  position: absolute; left: 0; right: 0; z-index: 30;
-  top: max(64px, calc(env(safe-area-inset-top) + 56px));
-  display: flex; justify-content: flex-end;
-  max-width: 64rem; margin: 0 auto;
-  padding: 10px 24px;
-}
-@media (min-width: 768px) {
-  .sticky-wall .top { padding-left: 48px; padding-right: 48px; }
-}
-.sticky-wall .controls { display: flex; gap: 14px; }
-.sticky-wall .controls button {
-  font: italic 600 13px/1 var(--display); letter-spacing: .05em; text-transform: uppercase;
-  color: var(--ink); background: none; border: 0;
-  padding: 4px 2px; cursor: pointer; opacity: .6; border-bottom: 1.5px solid currentColor;
-}
-.sticky-wall .controls button:hover { opacity: 1; }
-/* The site nav has its own mute icon below 768px. */
-@media (max-width: 767px) {
-  .sticky-wall .controls .mute { display: none; }
-}
-@media (max-width: 600px) {
-  .sticky-wall .top { justify-content: center; padding-top: 4px; }
-}
-
 /* Band name in the middle of the wall, like the original homepage. Centred
-   in the band between the controls (--wall-top) and the resting notes, so
+   in the band between the site nav (--wall-top) and the resting notes, so
    stuck notes frame it above and below. WALL_TOP in StickyWall.tsx matches. */
-.sticky-wall { --wall-top: 120px; }
+.sticky-wall { --wall-top: 88px; }
 .sticky-wall .center {
   position: absolute; left: 0; right: 0; z-index: 5;
   top: calc((var(--wall-top) + 100% - var(--desk-h) - 24px) / 2);
@@ -223,13 +196,9 @@
 .sticky-wall.theme-white .sh-soft i { background: rgba(40, 36, 30, .2); }
 
 /* Coloured paper swallows the shading tuned for off-white notes, so on the
-   white-wall theme it's lifted a little: brighter, slightly thicker top edge,
-   deeper crinkle and tooth, darker lifted-corner shading. */
-.sticky-wall.theme-white .paper::after {
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 5px;
-  pointer-events: none;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 1) 0, rgba(255, 255, 255, .85) 1.5px, rgba(255, 255, 255, 0) 4.5px);
-}
+   white-wall theme it's lifted a little: deeper crinkle and tooth, darker
+   lifted-corner shading. (A stronger top-edge highlight was tried and
+   dropped: on the white wall it didn't read.) */
 .sticky-wall.theme-white .crinkle { opacity: .42; }
 .sticky-wall.theme-white .tooth { opacity: .26; }
 .sticky-wall.theme-white .note[data-top="r"] .topcurl {

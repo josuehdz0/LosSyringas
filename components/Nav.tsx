@@ -154,6 +154,19 @@ function linkClass(href: string) {
                 </Link>
               </li>
             ))}
+            {/* On the Sueños wall there's no bottom-right player box, so the
+                mute toggle lives here on desktop (phones have their own). */}
+            {onWall && (
+              <li>
+                <button
+                  onClick={handleMute}
+                  aria-label={muted ? "Unmute" : "Mute"}
+                  className={`flex items-center transition-all duration-300 ${iconColor} ${muted ? "opacity-40" : "opacity-100 hover:opacity-70"}`}
+                >
+                  {muted ? <VolumeX size={18} strokeWidth={1.75} /> : <Volume2 size={18} strokeWidth={1.75} />}
+                </button>
+              </li>
+            )}
           </ul>
 
           {/* Mobile right — mute + hamburger */}

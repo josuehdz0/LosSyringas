@@ -9,6 +9,7 @@
 import { useSyncExternalStore } from "react";
 import { getIsMuted } from "./audioAnalysers";
 import { getCurrentSong, subscribeCurrentSong } from "./currentSong";
+import { needsSilentSwitchBridge } from "./audioRouting";
 
 export const SUENOS_STEMS = [
   { id: "josue",   file: "/stems/suenos/josue-guitar.mp3" },
@@ -135,13 +136,17 @@ export function ensureSuenosStarted() {
     ctx = new AC();
     master = ctx.createGain();
     master.gain.value = audible() && !muted ? 1 : 0;
-    // Route through an <audio> element so iOS plays it with the silent
-    // switch on (media session instead of the ringer), same as StemPlayer.
-    const dest = ctx.createMediaStreamDestination();
-    master.connect(dest);
-    bridge = new Audio();
-    bridge.srcObject = dest.stream;
-    bridge.muted = !audible() || muted;
+    if (needsSilentSwitchBridge()) {
+      // iOS: route through an <audio> element so it plays with the silent
+      // switch on (see lib/audioRouting).
+      const dest = ctx.createMediaStreamDestination();
+      master.connect(dest);
+      bridge = new Audio();
+      bridge.srcObject = dest.stream;
+      bridge.muted = !audible() || muted;
+    } else {
+      master.connect(ctx.destination);
+    }
     ctx.addEventListener("statechange", () => emit({ running: ctx?.state === "running" }));
   }
   bridge?.play().catch(() => {});

@@ -9,6 +9,7 @@ import * as Tone from "tone";
 import { stemAnalysers, setActiveStemIds, setIsMuted, setIsPlaying } from "@/lib/audioAnalysers";
 import { useCurrentSong } from "@/lib/currentSong";
 import { toggleSuenosPlaying, useSuenosAudio } from "@/lib/suenosAudio";
+import { needsSilentSwitchBridge } from "@/lib/audioRouting";
 
 const stems = [
   { id: "bass",       label: "Bass",        image: "/Portraits/Shawn.png",    file: "/stems/TSINFU demo flat_Bass.mp3" },
@@ -238,18 +239,22 @@ export default function StemPlayer() {
       // HTML5 audio uses the media playback session (ignores hardware mute switch),
       // the same way YouTube/Instagram work. We disconnect Tone from rawCtx.destination
       // and route everything exclusively through the bridge element.
-      const rawCtx = Tone.getContext().rawContext as AudioContext;
-      const streamDest = rawCtx.createMediaStreamDestination();
-      const toneOut = (Tone.getDestination() as unknown as { output: AudioNode }).output;
-      if (toneOut) {
-        try { toneOut.disconnect(rawCtx.destination); } catch { /* ignore */ }
-        toneOut.connect(streamDest);
+      // iOS only — on desktop the bridge makes Chrome drift the playback rate
+      // (heard as tempo/pitch wobble). See lib/audioRouting.
+      if (needsSilentSwitchBridge()) {
+        const rawCtx = Tone.getContext().rawContext as AudioContext;
+        const streamDest = rawCtx.createMediaStreamDestination();
+        const toneOut = (Tone.getDestination() as unknown as { output: AudioNode }).output;
+        if (toneOut) {
+          try { toneOut.disconnect(rawCtx.destination); } catch { /* ignore */ }
+          toneOut.connect(streamDest);
+        }
+        const bridge = new Audio();
+        bridge.srcObject = streamDest.stream;
+        bridge.muted = muted;
+        bridge.play().catch(() => {});
+        bridgeAudioRef.current = bridge;
       }
-      const bridge = new Audio();
-      bridge.srcObject = streamDest.stream;
-      bridge.muted = muted;
-      bridge.play().catch(() => {});
-      bridgeAudioRef.current = bridge;
 
       await Promise.all(
         stems.map(({ id, file }) => {

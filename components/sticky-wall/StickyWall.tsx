@@ -2,7 +2,6 @@
 
 import "./sticky-wall.css";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getIsMuted } from "@/lib/audioAnalysers";
 import { ensureSuenosStarted, getSuenosSounding, resumeSuenos, setSuenosStem, useSuenosAudio } from "@/lib/suenosAudio";
 
 /* Ported from docs/suenos-sticky-wall/prototype/index.html. The look and
@@ -109,8 +108,8 @@ const WALL_THEME: WallTheme = "white";
 
 const CLUSTER_STEP_X = 1.12; // centre-to-centre, in note widths
 const CLUSTER_GAP_Y = 0.14;  // space between a row and the band name, in note heights
-// Top of the wall band, just under the controls (matches --wall-top in CSS).
-const WALL_TOP = 120;
+// Top of the wall band, just under the site nav (matches --wall-top in CSS).
+const WALL_TOP = 88;
 
 // Hover: the sheet comes partway off the wall, same shadow as when carried.
 const HOVER_H = 0.5;    // share of the full carry lift
@@ -138,12 +137,10 @@ export default function StickyWall() {
   const deskRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const noteRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const actions = useRef<{ all: () => void; clear: () => void; toggleMute: () => void }>();
   const [ready, setReady] = useState(false);
   const audio = useSuenosAudio();
   const loaded = audio.loaded;
   const hintGone = audio.running;
-  const [muted, setMuted] = useState(false);
   const [theme, setTheme] = useState<WallTheme>(WALL_THEME);
 
   useEffect(() => {
@@ -189,19 +186,12 @@ export default function StickyWall() {
     /* ---------- Audio ----------
        The engine lives in lib/suenosAudio.ts so the music keeps playing on
        other pages; the wall just mirrors which stems are on. */
-    let mutedNow = getIsMuted();
-    setMuted(mutedNow);
     const ensureStarted = ensureSuenosStarted;
     // n.sounding: should the stem be heard (only once pressed to the wall).
     function setStem(n: NoteState, on: boolean) {
       n.sounding = on;
       setSuenosStem(n.s.id, on);
     }
-    function onMuteChange(e: Event) {
-      mutedNow = (e as CustomEvent<{ muted: boolean }>).detail.muted;
-      setMuted(mutedNow);
-    }
-    window.addEventListener("muteChange", onMuteChange);
 
     /* ---------- Shadows / pose ---------- */
     function pose(n: NoteState, lf: number, h: number) {
@@ -255,7 +245,7 @@ export default function StickyWall() {
         ? tr.top - sr.top - m.size * CLUSTER_GAP_Y - half
         : tr.bottom - sr.top + m.size * CLUSTER_GAP_Y + half;
       y += (dy + n.wallJ.y) * m.size;
-      // On short screens, stay between the controls and the resting notes.
+      // On short screens, stay between the nav and the resting notes.
       y = Math.min(m.deskTop - 12 - half, Math.max(WALL_TOP + half, y));
       return { x, y, r: n.wallJ.r, k: 1 };
     }
@@ -404,23 +394,6 @@ export default function StickyWall() {
       return { click, enter, leave };
     });
 
-    actions.current = {
-      all: () => {
-        ensureStarted();
-        notes.filter((n) => !n.onWall).forEach((n, k) => later(() => stick(n), k * 110));
-      },
-      clear: () => {
-        // Take them down top-most first, the way you'd unstack real notes.
-        const z = (n: NoteState) => Number(n.el.style.zIndex) || 10;
-        notes
-          .filter((n) => n.onWall)
-          .sort((a, b) => z(b) - z(a) || b.i - a.i)
-          .forEach((n, k) => later(() => peel(n), k * 90));
-      },
-      toggleMute: () => {
-        window.dispatchEvent(new CustomEvent("muteToggle", { detail: { muted: !mutedNow } }));
-      },
-    };
 
     // Try to play now. If the browser blocks it, the engine starts on the
     // first tap/click/key anywhere on the site.
@@ -435,7 +408,6 @@ export default function StickyWall() {
     return () => {
       disposed = true;
       window.removeEventListener("resize", layout);
-      window.removeEventListener("muteChange", onMuteChange);
       notes.forEach((n, i) => {
         n.el.removeEventListener("click", handlers[i].click);
         n.el.removeEventListener("pointerenter", handlers[i].enter);
@@ -476,14 +448,6 @@ export default function StickyWall() {
           {loaded ? "tap anywhere to play" : "loading the stems…"}
         </p>
       </div>
-
-      <header className="top">
-        <div className="controls">
-          <button onClick={() => actions.current?.all()}>stick &apos;em all</button>
-          <button onClick={() => actions.current?.clear()}>clear wall</button>
-          <button className="mute" onClick={() => actions.current?.toggleMute()}>{muted ? "sound on" : "mute"}</button>
-        </div>
-      </header>
 
       {STEMS.map((s, i) => (
         <button
