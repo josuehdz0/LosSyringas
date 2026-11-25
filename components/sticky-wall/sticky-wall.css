@@ -23,7 +23,9 @@
   user-select: none;
 }
 @media (max-width: 600px) {
-  .sticky-wall { --note: clamp(96px, 28vw, 124px); --desk-h: 190px; }
+  /* Resting notes peek in from the edges on phones, so there's no bottom
+     strip to leave room for: the band name sits at the screen's centre. */
+  .sticky-wall { --note: clamp(96px, 28vw, 124px); --desk-h: 60px; }
 }
 
 /* Plaster: a fine speckle over a slow mottle, lit from above. */
@@ -59,7 +61,10 @@
 .sticky-wall .center .sub {
   margin: 16px 0 0; font-size: clamp(0.9rem, 2vw, 1.125rem); color: rgba(43, 38, 32, .7);
 }
+/* Hangs below the tagline without taking space, so the name + tagline
+   themselves are what's centred. */
 .sticky-wall .hint {
+  position: absolute; left: 0; right: 0; top: 100%;
   margin: 18px 0 0; font-size: 14px; color: var(--ink-soft);
   transition: opacity .5s ease;
 }

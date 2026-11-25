@@ -108,6 +108,18 @@ const WALL_THEME: WallTheme = "white";
 
 const CLUSTER_STEP_X = 1.12; // centre-to-centre, in note widths
 const CLUSTER_GAP_Y = 0.14;  // space between a row and the band name, in note heights
+// Phones: where each resting note peeks in from. `at` is how far down the
+// screen (left/right) or across it (bottom); r is its tilt.
+const PEEK: Record<string, { side: "left" | "right" | "bottom"; at: number; r: number }> = {
+  keys:    { side: "left",   at: 0.6,  r: 12 },
+  josue:   { side: "left",   at: 0.83, r: -8 },
+  drums:   { side: "bottom", at: 0.5,  r: 5 },
+  pearson: { side: "right",  at: 0.64, r: -11 },
+  bass:    { side: "right",  at: 0.86, r: 9 },
+};
+const PEEK_VISIBLE = 0.45; // share of the note showing on screen
+const PEEK_SCALE = 1;
+
 // Top of the wall band, just under the site nav (matches --wall-top in CSS).
 const WALL_TOP = 88;
 
@@ -221,7 +233,22 @@ export default function StickyWall() {
       return { left: (m.W - box) / 2 + inset, width: box - inset * 2, pad: 0 };
     }
 
+    // Phones: resting notes peek in from the screen edges (about 45% showing)
+    // instead of sitting in a row; tap the visible part to stick one up.
+    function peekPose(n: NoteState, m: M): Pose {
+      const p = PEEK[n.s.id];
+      const s = m.size * PEEK_SCALE;
+      const out = s * (0.5 - PEEK_VISIBLE); // how far the centre sits past the edge
+      const r = p.r + n.deskJ.r * 0.2;
+      // Keep side notes below the nav and above the bottom one.
+      const y = (frac: number) => Math.min(m.H - s * 0.9, Math.max(WALL_TOP + s / 2, frac * m.H));
+      if (p.side === "left") return { x: -out, y: y(p.at), r, k: PEEK_SCALE };
+      if (p.side === "right") return { x: m.W + out, y: y(p.at), r, k: PEEK_SCALE };
+      return { x: p.at * m.W, y: m.H + out, r, k: PEEK_SCALE };
+    }
+
     function deskPose(n: NoteState, m: M): Pose {
+      if (m.narrow) return peekPose(n, m);
       const col = column(m);
       const slotW = col.width / notes.length;
       const deskScale = m.narrow ? 0.92 : 0.86;
