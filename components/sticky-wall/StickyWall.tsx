@@ -516,10 +516,11 @@ export default function StickyWall() {
           <h1>Los Syringas</h1>
           <p className="sub">Indie Surf Rock Band · Boise, ID</p>
         </div>
-        <p className={`hint${loaded && wallCount > 0 ? " gone" : ""}`}>
-          {loaded ? "tap a sticky note to play" : "loading the stems…"}
-        </p>
       </div>
+
+      <p className={`hint${loaded && wallCount > 0 ? " gone" : ""}`}>
+        {loaded ? "tap a sticky note to play" : "loading the stems…"}
+      </p>
 
       {STEMS.map((s, i) => (
         <button
