@@ -216,3 +216,24 @@
 /* A white wall reflects more light, so shadows read a touch lighter. */
 .sticky-wall.theme-white .sh-hard i { background: rgba(40, 36, 30, .24); }
 .sticky-wall.theme-white .sh-soft i { background: rgba(40, 36, 30, .2); }
+
+/* Coloured paper swallows the shading tuned for off-white notes, so on the
+   white-wall theme it's lifted a little: brighter, slightly thicker top edge,
+   deeper crinkle and tooth, darker lifted-corner shading. */
+.sticky-wall.theme-white .paper::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 5px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 1) 0, rgba(255, 255, 255, .85) 1.5px, rgba(255, 255, 255, 0) 4.5px);
+}
+.sticky-wall.theme-white .crinkle { opacity: .42; }
+.sticky-wall.theme-white .tooth { opacity: .26; }
+.sticky-wall.theme-white .note[data-top="r"] .topcurl {
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, .95) 0, rgba(255, 255, 255, .95) 1.5px, rgba(255, 255, 255, 0) 4px),
+    radial-gradient(ellipse 70% 62% at 100% 0%, rgba(70, 62, 50, .3), rgba(70, 62, 50, .14) 40%, rgba(70, 62, 50, .05) 70%, rgba(70, 62, 50, 0) 100%);
+}
+.sticky-wall.theme-white .note[data-top="l"] .topcurl {
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, .95) 0, rgba(255, 255, 255, .95) 1.5px, rgba(255, 255, 255, 0) 4px),
+    radial-gradient(ellipse 70% 62% at 0% 0%, rgba(70, 62, 50, .3), rgba(70, 62, 50, .14) 40%, rgba(70, 62, 50, .05) 70%, rgba(70, 62, 50, 0) 100%);
+}

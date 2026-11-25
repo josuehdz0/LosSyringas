@@ -8,6 +8,7 @@ import { Volume2, VolumeX, Play, Pause } from "lucide-react";
 import * as Tone from "tone";
 import { stemAnalysers, setActiveStemIds, setIsMuted, setIsPlaying } from "@/lib/audioAnalysers";
 import { useCurrentSong } from "@/lib/currentSong";
+import { toggleSuenosPlaying, useSuenosAudio } from "@/lib/suenosAudio";
 
 const stems = [
   { id: "bass",       label: "Bass",        image: "/Portraits/Shawn.png",    file: "/stems/TSINFU demo flat_Bass.mp3" },
@@ -68,6 +69,11 @@ export default function StemPlayer() {
   // song (the Sueños sticky wall), it hides and stays silent.
   const isOurSong = useCurrentSong() === "tsinfu";
   const isOurSongRef = useRef(isOurSong);
+  // Sueños has its own engine (lib/suenosAudio). These desktop controls drive
+  // it on the other pages; on the Sueños homepage the wall has its own controls.
+  const suenos = useSuenosAudio();
+  const showControls = isOurSong || (!isHome && suenos.running);
+  const showPause = isOurSong ? playing && started : suenos.playing;
 
   const stemsRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
@@ -346,15 +352,21 @@ export default function StemPlayer() {
       )}
 
       {/* Desktop controls — play/pause + mute, fixed right */}
-      <div ref={controlsRef} className={`${isOurSong ? "md:flex" : ""} hidden fixed bottom-6 right-6 z-50`}>
+      <div ref={controlsRef} className={`${showControls ? "md:flex" : ""} hidden fixed bottom-6 right-6 z-50`}>
         <div className="flex flex-row gap-2 bg-white border border-[var(--black)]/15 rounded-2xl px-4 py-3 shadow-sm">
           <button
-            onClick={handlePlayPause}
+            onClick={(e) => {
+              if (isOurSong) { handlePlayPause(e); return; }
+              gsap.timeline()
+                .to(e.currentTarget, { scale: 0.88, duration: 0.1, ease: "power2.in" })
+                .to(e.currentTarget, { scale: 1, duration: 0.4, ease: "elastic.out(1, 0.4)" });
+              toggleSuenosPlaying();
+            }}
             className="flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl text-[var(--black)]/50 hover:text-[var(--black)]/80 transition-colors duration-200"
           >
-            {playing && started ? <Pause size={20} strokeWidth={1.75} /> : <Play size={20} strokeWidth={1.75} />}
+            {showPause ? <Pause size={20} strokeWidth={1.75} /> : <Play size={20} strokeWidth={1.75} />}
             <span className="text-[9px] font-semibold uppercase tracking-wide leading-none">
-              {playing && started ? "Pause" : "Play"}
+              {showPause ? "Pause" : "Play"}
             </span>
           </button>
           <button

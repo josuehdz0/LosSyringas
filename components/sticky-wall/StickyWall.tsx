@@ -3,6 +3,7 @@
 import "./sticky-wall.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getIsMuted } from "@/lib/audioAnalysers";
+import { ensureSuenosStarted, getSuenosSounding, resumeSuenos, setSuenosStem, useSuenosAudio } from "@/lib/suenosAudio";
 
 /* Ported from docs/suenos-sticky-wall/prototype/index.html. The look and
    motion numbers are the approved ones in sticky-notes-final-rendering.md;
@@ -12,7 +13,6 @@ interface StemDef {
   id: string;
   who: string;
   what: string;
-  file: string;
   c: string;   // paper colour
   k: number;   // how far the free end stands off the wall
   tw: number;  // twist: which bottom corner stands further off (+ right, - left)
@@ -22,11 +22,11 @@ interface StemDef {
 }
 
 const STEMS: StemDef[] = [
-  { id: "josue",   who: "josué",   what: "guitar", file: "/stems/suenos/josue-guitar.mp3",   c: "#ebe9e2", k: 1.0,  tw: 0.3,  top: "r", tl: 1 },
-  { id: "pearson", who: "pearson", what: "guitar", file: "/stems/suenos/pearson-guitar.mp3", c: "#eceae3", k: 1.35, tw: -0.5, ay: "-10%" },
-  { id: "bass",    who: "shawn",   what: "bass",   file: "/stems/suenos/bass.mp3",           c: "#eae8e1", k: 1.1,  tw: 0.15, top: "l", tl: 0.6 },
-  { id: "drums",   who: "luke",    what: "drums",  file: "/stems/suenos/drums.mp3",          c: "#ecebe4", k: 0.85, tw: -0.2 },
-  { id: "keys",    who: "josh",    what: "keys",   file: "/stems/suenos/keys.mp3",           c: "#ebe8e1", k: 1.4,  tw: 0.55 },
+  { id: "josue",   who: "josué",   what: "guitar", c: "#ebe9e2", k: 1.0,  tw: 0.3,  top: "r", tl: 1 },
+  { id: "pearson", who: "pearson", what: "guitar", c: "#eceae3", k: 1.35, tw: -0.5, ay: "-10%" },
+  { id: "bass",    who: "shawn",   what: "bass",   c: "#eae8e1", k: 1.1,  tw: 0.15, top: "l", tl: 0.6 },
+  { id: "drums",   who: "luke",    what: "drums",  c: "#ecebe4", k: 0.85, tw: -0.2 },
+  { id: "keys",    who: "josh",    what: "keys",   c: "#ebe8e1", k: 1.4,  tw: 0.55 },
 ];
 
 // ── Motion constants ───────────────────────────────────────────────────────
@@ -106,8 +106,7 @@ const CLUSTER: [number, 0 | 1, number][] = [
 type WallTheme = "white" | "plaster";
 const WALL_THEME: WallTheme = "white";
 
-// Already on the wall when the page opens. They sound from the first tap.
-const START_ON_WALL = new Set(["keys", "bass"]);
+
 const CLUSTER_STEP_X = 1.12; // centre-to-centre, in note widths
 const CLUSTER_GAP_Y = 0.14;  // space between a row and the band name, in note heights
 // Top of the wall band, just under the controls (matches --wall-top in CSS).
@@ -141,8 +140,9 @@ export default function StickyWall() {
   const noteRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const actions = useRef<{ all: () => void; clear: () => void; toggleMute: () => void }>();
   const [ready, setReady] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const [hintGone, setHintGone] = useState(false);
+  const audio = useSuenosAudio();
+  const loaded = audio.loaded;
+  const hintGone = audio.running;
   const [muted, setMuted] = useState(false);
   const [theme, setTheme] = useState<WallTheme>(WALL_THEME);
 
@@ -176,112 +176,30 @@ export default function StickyWall() {
       timers.add(t);
     };
 
+    const playingNow = getSuenosSounding();
     const notes: NoteState[] = STEMS.map((s, i) => ({
       s, i, el: noteRefs.current[i]!,
-      onWall: START_ON_WALL.has(s.id), busy: false, sounding: START_ON_WALL.has(s.id),
+      // Whatever is playing (keys + bass on a fresh visit or after a song
+      // switch; the visitor's own picks when coming back from another page).
+      onWall: playingNow.has(s.id), busy: false, sounding: playingNow.has(s.id),
       deskJ: looks[i].deskJ, wallJ: looks[i].wallJ, pos: null,
       hov: 0, hovTarget: 0, hovRaf: 0,
     }));
 
     /* ---------- Audio ----------
-       All stems start at the same instant, looped, each through its own
-       GainNode; sticking a note only ramps its gain, so they never drift. */
+       The engine lives in lib/suenosAudio.ts so the music keeps playing on
+       other pages; the wall just mirrors which stems are on. */
     let mutedNow = getIsMuted();
     setMuted(mutedNow);
-    let ctx: AudioContext | null = null;
-    let master: GainNode | null = null;
-    let bridge: HTMLAudioElement | null = null;
-    const gains: Record<string, GainNode> = {};
-    const sources: AudioBufferSourceNode[] = [];
-    let decoding = false;
-
-    // Fetch the stems right away.
-    const raw = Promise.all(STEMS.map((s) => fetch(s.file).then((r) => r.arrayBuffer())));
-    raw.then(() => { if (!disposed) setLoaded(true); }).catch((e) => console.warn("Sueños stems failed to load:", e));
-
-    function applyMute() {
-      if (master && ctx) master.gain.setTargetAtTime(mutedNow ? 0 : 1, ctx.currentTime, 0.05);
-      if (bridge) bridge.muted = mutedNow;
-    }
-
-    /* Autoplay: set everything up on page load and try to play straight
-       away. Browsers only allow that if the visitor has interacted with the
-       site before (or allowed auto-play); otherwise the context stays
-       suspended and the very first tap/click/key anywhere on the page
-       unlocks it (see unlock below). Stems are scheduled on the suspended
-       context, so they all begin together the moment it runs. */
-    function ensureStarted() {
-      if (!ctx) {
-        const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        ctx = new AC();
-        master = ctx.createGain();
-        master.gain.value = mutedNow ? 0 : 1;
-        // Route through an <audio> element so iOS plays it with the silent
-        // switch on (media session instead of the ringer), same as StemPlayer.
-        const dest = ctx.createMediaStreamDestination();
-        master.connect(dest);
-        bridge = new Audio();
-        bridge.srcObject = dest.stream;
-        bridge.muted = mutedNow;
-        ctx.addEventListener("statechange", () => {
-          if (ctx?.state === "running" && !disposed) setHintGone(true);
-        });
-      }
-      bridge?.play().catch(() => {});
-      if (ctx.state !== "running") ctx.resume().catch(() => {});
-      if (decoding) return;
-      decoding = true;
-      const c = ctx;
-      raw.then(async (bufs) => {
-        const decoded = await Promise.all(bufs.map((b) => c.decodeAudioData(b)));
-        if (disposed) return;
-        const t0 = c.currentTime + 0.08;
-        STEMS.forEach((s, i) => {
-          const g = c.createGain();
-          g.gain.value = 0;
-          g.connect(master!);
-          gains[s.id] = g;
-          const src = c.createBufferSource();
-          src.buffer = decoded[i];
-          src.loop = true;
-          src.connect(g);
-          src.start(t0);
-          sources.push(src);
-        });
-        for (const n of notes) setStem(n, n.sounding);
-      }).catch((e) => console.warn("Sueños audio failed to start:", e));
-    }
-
+    const ensureStarted = ensureSuenosStarted;
     // n.sounding: should the stem be heard (only once pressed to the wall).
     function setStem(n: NoteState, on: boolean) {
       n.sounding = on;
-      const g = gains[n.s.id];
-      if (!g || !ctx) return;
-      const now = ctx.currentTime;
-      g.gain.cancelScheduledValues(now);
-      g.gain.setTargetAtTime(on ? 1 : 0, now, on ? 0.09 : 0.14);
+      setSuenosStem(n.s.id, on);
     }
-
-    // Hidden: mute the bridge (don't pause — restarting it needs a gesture
-    // on iOS) and suspend the context. Visible: give iOS a beat, then resume.
-    function onVisibility() {
-      if (!ctx) return;
-      if (document.hidden) {
-        if (bridge) bridge.muted = true;
-        ctx.suspend().catch(() => {});
-      } else {
-        later(() => {
-          ctx?.resume().then(() => { if (bridge) bridge.muted = mutedNow; }).catch(() => {});
-        }, 200);
-      }
-    }
-    document.addEventListener("visibilitychange", onVisibility);
-
-    // Global mute (Nav on mobile, our own button) stays in sync via StemPlayer.
     function onMuteChange(e: Event) {
       mutedNow = (e as CustomEvent<{ muted: boolean }>).detail.muted;
       setMuted(mutedNow);
-      applyMute();
     }
     window.addEventListener("muteChange", onMuteChange);
 
@@ -485,20 +403,10 @@ export default function StickyWall() {
       },
     };
 
-    // Browsers only allow sound after a tap, so the first tap anywhere on the
-    // wall starts it (with keys + bass already up, that's the first thing heard).
-    // Try now; if the browser says no, the first interaction anywhere does it.
+    // Try to play now. If the browser blocks it, the engine starts on the
+    // first tap/click/key anywhere on the site.
+    resumeSuenos();
     ensureStarted();
-    const unlockEvents = ["click", "touchend", "keydown"] as const;
-    function unlock() {
-      ensureStarted();
-      if (ctx?.state === "running") removeUnlock();
-      else ctx?.resume().then(removeUnlock).catch(() => {});
-    }
-    function removeUnlock() {
-      unlockEvents.forEach((t) => document.removeEventListener(t, unlock, true));
-    }
-    unlockEvents.forEach((t) => document.addEventListener(t, unlock, true));
 
     window.addEventListener("resize", layout);
     layout();
@@ -508,9 +416,7 @@ export default function StickyWall() {
     return () => {
       disposed = true;
       window.removeEventListener("resize", layout);
-      removeUnlock();
       window.removeEventListener("muteChange", onMuteChange);
-      document.removeEventListener("visibilitychange", onVisibility);
       notes.forEach((n, i) => {
         n.el.removeEventListener("click", handlers[i].click);
         n.el.removeEventListener("pointerenter", handlers[i].enter);
@@ -518,9 +424,6 @@ export default function StickyWall() {
       });
       rafs.forEach((id) => cancelAnimationFrame(id));
       timers.forEach((t) => clearTimeout(t));
-      sources.forEach((s) => { try { s.stop(); } catch { /* not started */ } });
-      if (bridge) { bridge.pause(); bridge.srcObject = null; }
-      ctx?.close().catch(() => {});
     };
   }, [looks]);
 

@@ -17,11 +17,11 @@ export function setCurrentSong(id: SongId): void {
   listeners.forEach((l) => l());
 }
 
-function subscribe(l: () => void) {
+export function subscribeCurrentSong(l: () => void) {
   listeners.add(l);
   return () => { listeners.delete(l); };
 }
 
 export function useCurrentSong(): SongId {
-  return useSyncExternalStore(subscribe, getCurrentSong, () => songs[0].id);
+  return useSyncExternalStore(subscribeCurrentSong, getCurrentSong, () => songs[0].id);
 }
