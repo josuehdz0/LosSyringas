@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { Volume2, VolumeX } from "lucide-react";
 import Logo from "./Logo";
+import { setCurrentSong, useCurrentSong } from "@/lib/currentSong";
+import { songHref } from "@/lib/songs";
 
 const links = [
   { href: "/", label: "Home" },
@@ -26,7 +28,39 @@ export default function Nav() {
   const isHome = pathname === "/";
   // Pages with a full-bleed hero photo — nav should be white text when not scrolled
   const hasHero = pathname === "/music";
-  const useWhiteText = isHome || (hasHero && !scrolled);
+  // The Sueños sticky wall is light beige, so the nav goes dark there.
+  // (Hook called unconditionally: hooks must run in the same order every render.)
+  const currentSong = useCurrentSong();
+  const onWall = isHome && currentSong === "suenos";
+  const useWhiteText = (isHome && !onWall) || (hasHero && !scrolled);
+
+  // Easter egg: double-click / double-tap the flower to flip between Sueños
+  // and the older song. A single click still just goes home. Detected by hand
+  // (two clicks within DOUBLE_MS) because phones don't reliably fire dblclick.
+  const router = useRouter();
+  const logoRef = useRef<HTMLAnchorElement>(null);
+  const logoClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const DOUBLE_MS = 320;
+
+  function handleLogoClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault();
+    setOpen(false);
+    if (logoClickTimer.current) {
+      clearTimeout(logoClickTimer.current);
+      logoClickTimer.current = null;
+      const next = currentSong === "suenos" ? "tsinfu" : "suenos";
+      gsap.fromTo(logoRef.current, { rotate: 0 }, { rotate: 360, duration: 0.6, ease: "power2.inOut" });
+      setCurrentSong(next);
+      router.push(songHref(next), { scroll: false });
+      return;
+    }
+    logoClickTimer.current = setTimeout(() => {
+      logoClickTimer.current = null;
+      router.push("/");
+    }, DOUBLE_MS);
+  }
+
+  useEffect(() => () => { if (logoClickTimer.current) clearTimeout(logoClickTimer.current); }, []);
 
   useGSAP(() => {
     if (!visible) return;
@@ -38,26 +72,8 @@ export default function Nav() {
     });
   }, { dependencies: [visible] });
 
-  useEffect(() => {
-    if (!isHome) { setVisible(true); return; }
-    function onEntered() {
-      setVisible(true);
-      const isMobile = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-      if (isMobile && muteButtonRef.current) {
-        setTimeout(() => {
-          gsap.timeline()
-            .to(muteButtonRef.current, { scale: 1.4, duration: 0.2, ease: "power2.out" })
-            .to(muteButtonRef.current, { scale: 1, duration: 0.3, ease: "elastic.out(1, 0.4)" })
-            .to(muteButtonRef.current, { scale: 1.4, duration: 0.2, ease: "power2.out", delay: 0.2 })
-            .to(muteButtonRef.current, { scale: 1, duration: 0.3, ease: "elastic.out(1, 0.4)" })
-            .to(muteButtonRef.current, { scale: 1.4, duration: 0.2, ease: "power2.out", delay: 0.2 })
-            .to(muteButtonRef.current, { scale: 1, duration: 0.3, ease: "elastic.out(1, 0.4)" });
-        }, 800);
-      }
-    }
-    window.addEventListener("splashEntered", onEntered);
-    return () => window.removeEventListener("splashEntered", onEntered);
-  }, [isHome]);
+  // No splash anymore: slide the nav in on first mount.
+  useEffect(() => { setVisible(true); }, []);
 
   useEffect(() => {
     function onScroll() { setScrolled(window.scrollY > 16); }
@@ -119,7 +135,7 @@ function linkClass(href: string) {
         } ${!visible ? "opacity-0 pointer-events-none" : ""}`}
       >
         <div className="max-w-5xl mx-auto w-full flex items-center justify-between px-6 md:px-12 py-4" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>
-          <Link href="/" onClick={() => setOpen(false)} aria-label="Los Syringas">
+          <Link href="/" ref={logoRef} onClick={handleLogoClick} aria-label="Los Syringas" className="inline-block select-none" style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}>
             <Logo
               className="h-8 w-auto transition-opacity hover:opacity-70"
               fill={logoFill}
@@ -138,6 +154,19 @@ function linkClass(href: string) {
                 </Link>
               </li>
             ))}
+            {/* On the Sueños wall there's no bottom-right player box, so the
+                mute toggle lives here on desktop (phones have their own). */}
+            {onWall && (
+              <li>
+                <button
+                  onClick={handleMute}
+                  aria-label={muted ? "Unmute" : "Mute"}
+                  className={`flex items-center transition-all duration-300 ${iconColor} ${muted ? "opacity-40" : "opacity-100 hover:opacity-70"}`}
+                >
+                  {muted ? <VolumeX size={18} strokeWidth={1.75} /> : <Volume2 size={18} strokeWidth={1.75} />}
+                </button>
+              </li>
+            )}
           </ul>
 
           {/* Mobile right — mute + hamburger */}

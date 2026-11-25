@@ -7,6 +7,9 @@ import gsap from "gsap";
 import { Volume2, VolumeX, Play, Pause } from "lucide-react";
 import * as Tone from "tone";
 import { stemAnalysers, setActiveStemIds, setIsMuted, setIsPlaying } from "@/lib/audioAnalysers";
+import { useCurrentSong } from "@/lib/currentSong";
+import { toggleSuenosPlaying, useSuenosAudio } from "@/lib/suenosAudio";
+import { needsSilentSwitchBridge } from "@/lib/audioRouting";
 
 const stems = [
   { id: "bass",       label: "Bass",        image: "/Portraits/Shawn.png",    file: "/stems/TSINFU demo flat_Bass.mp3" },
@@ -17,7 +20,8 @@ const stems = [
   { id: "magic",      label: "Magic",       image: "/Portraits/Mushrooms.png",file: "/stems/TSINFU demo flat_Magic.mp3" },
 ];
 
-let splashCleared = false;
+// On when this song opens (and again whenever you switch back to it).
+const DEFAULT_ACTIVE = ["magic"];
 
 interface StemButtonProps {
   id: string;
@@ -55,14 +59,22 @@ function StemButton({ label, image, on, loading, circleRef, wrapperRef, onToggle
 }
 
 export default function StemPlayer() {
-  const [active, setActive] = useState<Set<string>>(new Set(["magic"]));
+  const [active, setActive] = useState<Set<string>>(new Set(DEFAULT_ACTIVE));
   const [muted, setMuted] = useState(false);
   const [playing, setPlaying] = useState(true);
   const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [animReady, setAnimReady] = useState(splashCleared);
   const [navMenuOpen, setNavMenuOpen] = useState(false);
   const isHome = usePathname() === "/";
+  // This player is "This Song Is Not for You". While the homepage shows another
+  // song (the Sueños sticky wall), it hides and stays silent.
+  const isOurSong = useCurrentSong() === "tsinfu";
+  const isOurSongRef = useRef(isOurSong);
+  // Sueños has its own engine (lib/suenosAudio). These desktop controls drive
+  // it on the other pages; on the Sueños homepage the wall has its own controls.
+  const suenos = useSuenosAudio();
+  const showControls = isOurSong || (!isHome && suenos.running);
+  const showPause = isOurSong ? playing && started : suenos.playing;
 
   const stemsRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
@@ -72,6 +84,8 @@ export default function StemPlayer() {
   const players = useRef<Record<string, Tone.Player>>({});
   const bridgeAudioRef = useRef<HTMLAudioElement | null>(null);
   const playingRef = useRef(true); // mirrors playing state for use in event listeners
+  const startedRef = useRef(false);
+  const startPromise = useRef<Promise<void> | null>(null);
 
   // Stable ref callbacks — one per stem, never recreated
   const circleRefs = useRef(
@@ -85,29 +99,54 @@ export default function StemPlayer() {
     )
   );
 
+  // Slide the stem row and controls up whenever they (re)appear.
   useGSAP(() => {
-    if (animReady) return;
-    const targets = [stemsRef.current, controlsRef.current].filter(Boolean);
-    if (targets.length) gsap.set(targets, { opacity: 0, y: 40 });
-  }, []);
+    if (!isOurSong) return;
+    if (stemsRef.current) gsap.from(stemsRef.current, { opacity: 0, y: 40, duration: 0.7, ease: "power3.out" });
+    gsap.from(controlsRef.current, { opacity: 0, y: 40, duration: 0.7, ease: "power3.out", delay: 0.15 });
+  }, { dependencies: [isOurSong, isHome] });
 
-  useGSAP(() => {
-    if (!animReady) return;
-    gsap.to(stemsRef.current, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" });
-    gsap.to(controlsRef.current, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out", delay: 0.15 });
-  }, { dependencies: [animReady] });
-
+  // Switched to this song (logo double-click): back to its defaults (just the
+  // mushroom) and playing. Only on an actual switch — coming back to the
+  // homepage from another page keeps whatever the visitor had going.
+  const wasOurSong = useRef(isOurSong);
   useEffect(() => {
-    if (splashCleared) return;
-    function onEntered() {
-      splashCleared = true;
-      setAnimReady(true);
-      startAudio();
-    }
-    window.addEventListener("splashEntered", onEntered);
-    return () => window.removeEventListener("splashEntered", onEntered);
+    const switchedIn = isOurSong && !wasOurSong.current;
+    wasOurSong.current = isOurSong;
+    if (!switchedIn) return;
+    setActive(new Set(DEFAULT_ACTIVE));
+    playingRef.current = true;
+    setIsPlaying(true);
+    setPlaying(true);
+  }, [isOurSong]);
+
+  // On the homepage with this song and not started yet: sound starts right
+  // away if the visitor has already interacted with the page (a logo
+  // double-click counts); otherwise on their first tap/click/key anywhere,
+  // since browsers block audio before that.
+  useEffect(() => {
+    if (!isHome || !isOurSong) return;
+    if (startedRef.current) return;
+    const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+    if (ua?.hasBeenActive) { startAudio(); return; }
+    const events = ["click", "touchend", "keydown"] as const;
+    const onFirst = () => { cleanup(); startAudio(); };
+    const cleanup = () => events.forEach((t) => document.removeEventListener(t, onFirst, true));
+    events.forEach((t) => document.addEventListener(t, onFirst, true));
+    return cleanup;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isOurSong, isHome]);
+
+  // Silence (without stopping) while another song is on the homepage, so the
+  // loop stays in sync and comes straight back when switching to it.
+  useEffect(() => {
+    isOurSongRef.current = isOurSong;
+    if (!started) return;
+    const audible = isOurSong && playingRef.current;
+    Tone.getDestination().volume.value = audible ? 0 : -Infinity;
+    if (bridgeAudioRef.current) bridgeAudioRef.current.muted = !audible || muted;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOurSong, started]);
 
   useEffect(() => {
     Tone.getDestination().mute = muted;
@@ -154,8 +193,9 @@ export default function StemPlayer() {
         // Give iOS a moment to fully unfreeze before touching the AudioContext.
         setTimeout(() => {
           rawCtx.resume().then(() => {
-            if (playingRef.current) Tone.getDestination().volume.value = 0;
-            if (bridge) bridge.muted = !playingRef.current || muted;
+            const audible = playingRef.current && isOurSongRef.current;
+            if (audible) Tone.getDestination().volume.value = 0;
+            if (bridge) bridge.muted = !audible || muted;
           }).catch(() => {});
         }, 200);
       }
@@ -191,9 +231,15 @@ export default function StemPlayer() {
         gsap.to(el, { boxShadow: "0 0 0 0px rgba(255,198,0,0)", duration: 0.3 });
       }
     });
-  }, [active, animReady, isHome]);
+  }, [active, isOurSong, isHome]);
 
-  async function startAudio() {
+  // One start only, however many taps/listeners ask for it at once.
+  function startAudio(): Promise<void> {
+    if (!startPromise.current) startPromise.current = startAudioOnce();
+    return startPromise.current;
+  }
+
+  async function startAudioOnce() {
     setLoading(true);
     try {
       await Tone.start();
@@ -202,18 +248,22 @@ export default function StemPlayer() {
       // HTML5 audio uses the media playback session (ignores hardware mute switch),
       // the same way YouTube/Instagram work. We disconnect Tone from rawCtx.destination
       // and route everything exclusively through the bridge element.
-      const rawCtx = Tone.getContext().rawContext as AudioContext;
-      const streamDest = rawCtx.createMediaStreamDestination();
-      const toneOut = (Tone.getDestination() as unknown as { output: AudioNode }).output;
-      if (toneOut) {
-        try { toneOut.disconnect(rawCtx.destination); } catch { /* ignore */ }
-        toneOut.connect(streamDest);
+      // iOS only — on desktop the bridge makes Chrome drift the playback rate
+      // (heard as tempo/pitch wobble). See lib/audioRouting.
+      if (needsSilentSwitchBridge()) {
+        const rawCtx = Tone.getContext().rawContext as AudioContext;
+        const streamDest = rawCtx.createMediaStreamDestination();
+        const toneOut = (Tone.getDestination() as unknown as { output: AudioNode }).output;
+        if (toneOut) {
+          try { toneOut.disconnect(rawCtx.destination); } catch { /* ignore */ }
+          toneOut.connect(streamDest);
+        }
+        const bridge = new Audio();
+        bridge.srcObject = streamDest.stream;
+        bridge.muted = muted;
+        bridge.play().catch(() => {});
+        bridgeAudioRef.current = bridge;
       }
-      const bridge = new Audio();
-      bridge.srcObject = streamDest.stream;
-      bridge.muted = muted;
-      bridge.play().catch(() => {});
-      bridgeAudioRef.current = bridge;
 
       await Promise.all(
         stems.map(({ id, file }) => {
@@ -228,9 +278,11 @@ export default function StemPlayer() {
       );
       const startTime = Tone.now() + 0.1;
       stems.forEach(({ id }) => players.current[id].start(startTime));
+      startedRef.current = true;
       setStarted(true);
     } catch (e) {
       console.warn("Audio failed to start:", e);
+      startPromise.current = null; // allow a retry on the next tap
     } finally {
       setLoading(false);
     }
@@ -293,7 +345,7 @@ export default function StemPlayer() {
   return (
     <>
       {/* Stems — home page only, single render, responsive grid */}
-      {isHome && (
+      {isHome && isOurSong && (
         <div ref={stemsRef} className={`fixed left-1/2 -translate-x-1/2 z-50 transition-opacity duration-200 ${navMenuOpen ? "opacity-0 pointer-events-none" : ""}`} style={{ bottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
           <div className="grid grid-cols-3 w-[75vw] gap-x-3 gap-y-3 md:w-auto md:flex md:flex-row md:gap-4" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
             {stems.map(({ id, label, image }) => (
@@ -314,15 +366,21 @@ export default function StemPlayer() {
       )}
 
       {/* Desktop controls — play/pause + mute, fixed right */}
-      <div ref={controlsRef} className="hidden md:flex fixed bottom-6 right-6 z-50">
+      <div ref={controlsRef} className={`${showControls ? "md:flex" : ""} hidden fixed bottom-6 right-6 z-50`}>
         <div className="flex flex-row gap-2 bg-white border border-[var(--black)]/15 rounded-2xl px-4 py-3 shadow-sm">
           <button
-            onClick={handlePlayPause}
+            onClick={(e) => {
+              if (isOurSong) { handlePlayPause(e); return; }
+              gsap.timeline()
+                .to(e.currentTarget, { scale: 0.88, duration: 0.1, ease: "power2.in" })
+                .to(e.currentTarget, { scale: 1, duration: 0.4, ease: "elastic.out(1, 0.4)" });
+              toggleSuenosPlaying();
+            }}
             className="flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl text-[var(--black)]/50 hover:text-[var(--black)]/80 transition-colors duration-200"
           >
-            {playing && started ? <Pause size={20} strokeWidth={1.75} /> : <Play size={20} strokeWidth={1.75} />}
+            {showPause ? <Pause size={20} strokeWidth={1.75} /> : <Play size={20} strokeWidth={1.75} />}
             <span className="text-[9px] font-semibold uppercase tracking-wide leading-none">
-              {playing && started ? "Pause" : "Play"}
+              {showPause ? "Pause" : "Play"}
             </span>
           </button>
           <button

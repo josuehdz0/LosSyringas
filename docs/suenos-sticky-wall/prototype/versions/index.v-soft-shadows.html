@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sueños Sticky Wall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Permanent+Marker&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --wall: #e8e1d4;
+    --wall-light: #f6f1e7;
+    --ink: #2b2620;
+    --ink-soft: rgba(43, 38, 32, 0.45);
+    --desk-h: clamp(150px, 26vh, 230px);
+    --note: clamp(96px, 15vw, 190px);
+  }
+  @media (max-width: 600px) {
+    :root { --note: 84px; --desk-h: 170px; }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--wall);
+    color: var(--ink);
+    font-family: "Caveat", cursive;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  .stage { position: fixed; inset: 0; }
+
+  /* Plaster: a fine speckle over a slow mottle, lit from above. */
+  .wall {
+    position: absolute; inset: 0;
+    background:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .25  0 0 0 0 .2  0 0 0 0 .15  0 0 0 .16 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='900' height='900'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='.006' numOctaves='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .3  0 0 0 0 .22  0 0 0 .22 0'/></filter><rect width='100%' height='100%' filter='url(%23m)'/></svg>"),
+      radial-gradient(ellipse 90% 70% at 50% -5%, var(--wall-light), var(--wall) 70%, #d9d0c0 100%);
+    /* The mottle is stretched over the whole wall rather than tiled, so its
+       edges never line up into a visible seam. */
+    background-size: 260px 260px, cover, auto;
+    background-repeat: repeat, no-repeat, no-repeat;
+  }
+  /* No desk: this is only the invisible strip along the bottom of the wall
+     where unplayed notes rest. */
+  .desk {
+    position: absolute; left: 0; right: 0; bottom: 0; height: var(--desk-h);
+    pointer-events: none;
+  }
+
+  /* Header: band name, song switcher, wall controls */
+  .top {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 30;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    padding: 18px 20px; gap: 12px;
+  }
+  .band { font-family: "Permanent Marker", cursive; font-size: 15px; letter-spacing: .02em; opacity: .7; }
+  .switcher { display: flex; align-items: center; gap: 14px; }
+  .switcher h1 {
+    margin: 0; font-family: "Permanent Marker", cursive; font-weight: 400;
+    font-size: clamp(26px, 4vw, 40px); line-height: 1; transform: rotate(-2deg);
+  }
+  .switcher small { display: block; font-size: 17px; text-align: center; color: var(--ink-soft); margin-top: 2px; }
+  .arrow {
+    font: 700 30px/1 "Caveat", cursive; color: var(--ink); background: none; border: 0;
+    padding: 6px 8px; cursor: pointer; opacity: .35;
+  }
+  .arrow:hover { opacity: .8; }
+  .controls { justify-self: end; display: flex; gap: 14px; }
+  .controls button {
+    font: 600 20px/1 "Caveat", cursive; color: var(--ink); background: none; border: 0;
+    padding: 4px 2px; cursor: pointer; opacity: .6; border-bottom: 1.5px solid currentColor;
+  }
+  .controls button:hover { opacity: 1; }
+  @media (max-width: 600px) {
+    .top { grid-template-columns: 1fr; justify-items: center; padding-top: 14px; }
+    .band { display: none; }
+    .controls { justify-self: center; }
+  }
+
+  .hint {
+    position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%) rotate(-1.5deg);
+    font-size: clamp(24px, 3vw, 32px); color: var(--ink-soft); text-align: center;
+    pointer-events: none; transition: opacity .5s ease; white-space: nowrap;
+  }
+  .hint.gone { opacity: 0; }
+
+  .toast {
+    position: absolute; left: 50%; top: 92px; transform: translateX(-50%);
+    font-size: 21px; background: var(--wall-light); padding: 6px 14px; border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.12); opacity: 0; transition: opacity .3s; z-index: 40;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  /* Notes */
+  .note {
+    position: absolute; left: 0; top: 0; width: var(--note); height: var(--note);
+    padding: 0; border: 0; background: none; cursor: pointer;
+    font-family: inherit; color: inherit;
+    transform-origin: 50% 50%; will-change: transform; z-index: 10;
+  }
+  .note:focus-visible { outline: none; }
+  .note:focus-visible .paper { outline: 2px dashed var(--ink); outline-offset: 5px; }
+
+  /* Each note has its own shape off the wall (in STEMS):
+       k   how far its free bottom stands off the wall overall
+       tw  twist: one bottom corner further off than the other
+           (+ = right corner further, - = left)
+     And two numbers, set from JS every frame while a note moves, so the
+     shadow changes in one piece with the motion:
+       --lf  how far the free bottom stands off (.35 resting, 1 stuck)
+       --h   how far the whole sheet is held off the wall in the hand (0..1)
+     --lift is k scaled by --lf. */
+  .note { --lf: .35; --h: 0; --tw: 0; }
+  .body { position: absolute; inset: 0; --lift: calc(var(--k, 1) * var(--lf)); }
+
+  /* One light, from the upper right, as in the reference photos. Every
+     shadow is cast from how far each part of the note stands off the wall
+     (see shadowMatrix in JS): nothing at the glued top, a dark band below
+     the free bottom that slides down and to the left, longer under the
+     corner that stands further off, so its bottom edge slants. A wedge of
+     side shadow shows on the left, fading out going up (the mask stops it
+     well before the glued top). While held, the whole sheet is off the
+     wall: the mask opens and the shadow drifts away and softens. */
+  .sh {
+    position: absolute; inset: 0; transform-origin: 50% 0;
+    -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / var(--h)) 20%, #000 72%);
+            mask-image: linear-gradient(to bottom, rgb(0 0 0 / var(--h)) 20%, #000 72%);
+  }
+  /* The shadow takes the note's own outline. The outline is on an inner
+     layer so the blur on .sh isn't cut off by it. */
+  .sh i { position: absolute; inset: 0; clip-path: var(--shape); }
+  /* Feathered, not hard-edged: the further the paper stands off the wall,
+     the wider the blur (a real shadow's soft edge widens with distance).
+     Carried off the wall (--h), the crisp layer fades away and the soft
+     one spreads into a broad, faint blur, then gathers back on landing. */
+  .sh-hard i { background: rgba(40, 36, 30, .3); }
+  .sh-soft i { background: rgba(40, 36, 30, .25); }
+  .sh-hard {
+    opacity: calc(1 - var(--h) * 1.8);
+    filter: blur(calc(1.8px + var(--lift) * 1.6px + var(--h) * 10px));
+    transform: translate(calc(var(--h) * -8px), calc(var(--h) * 10px)) var(--mh);
+  }
+  .sh-soft {
+    opacity: calc(.76 + var(--h) * .24);
+    filter: blur(calc(4px + var(--lift) * 5px + var(--h) * 20px));
+    transform: translate(calc(var(--h) * -22px), calc(var(--h) * 30px)) var(--ms);
+  }
+
+  /* A top corner that hasn't fully stuck: the wall beside it gets a soft,
+     gradual shadow, strongest at the corner and fading down the side. */
+  .sh-top {
+    position: absolute; top: 0; width: 9%; height: 60%; display: none;
+    filter: blur(3px);
+    opacity: calc(var(--tl, 0) * var(--lf) * (1 - var(--h) * 1.6));
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 22%, transparent 100%);
+            mask-image: linear-gradient(to bottom, #000 0%, #000 22%, transparent 100%);
+  }
+  .note[data-top="r"] .sh-top {
+    display: block; left: 99%;
+    background: linear-gradient(to right, rgba(40, 36, 30, .2), rgba(40, 36, 30, 0));
+  }
+  .note[data-top="l"] .sh-top {
+    display: block; right: 99%;
+    background: linear-gradient(to left, rgba(40, 36, 30, .2), rgba(40, 36, 30, 0));
+  }
+  /* ...and the paper itself shades softly toward that corner, as it turns
+     away from the wall, with the bright top edge still on top. */
+  .topcurl { position: absolute; inset: 0; pointer-events: none; display: none; opacity: var(--tl, 0); }
+  .note[data-top="r"] .topcurl {
+    display: block;
+    background:
+      linear-gradient(to bottom, rgba(255, 255, 255, .9) 0, rgba(255, 255, 255, .9) 1px, rgba(255, 255, 255, 0) 2.5px),
+      radial-gradient(ellipse 55% 50% at 100% 0%, rgba(70, 62, 50, .11), rgba(70, 62, 50, .04) 55%, rgba(70, 62, 50, 0) 100%);
+  }
+  .note[data-top="l"] .topcurl {
+    display: block;
+    background:
+      linear-gradient(to bottom, rgba(255, 255, 255, .9) 0, rgba(255, 255, 255, .9) 1px, rgba(255, 255, 255, 0) 2.5px),
+      radial-gradient(ellipse 55% 50% at 0% 0%, rgba(70, 62, 50, .11), rgba(70, 62, 50, .04) 55%, rgba(70, 62, 50, 0) 100%);
+  }
+
+  .paper {
+    position: absolute; inset: 0;
+    overflow: hidden;
+    /* Each note's outline: glued flat along the top, the sides flaring a
+       touch and the bottom corners rising as the free end bows off the
+       wall. Built per note in JS (see shapeFor). */
+    clip-path: var(--shape);
+    background:
+      /* the cut top edge of the paper catches the overhead light */
+      linear-gradient(to bottom, rgba(255, 255, 255, .95) 0, rgba(255, 255, 255, .95) 1px, rgba(255, 255, 255, 0) 2.5px),
+      /* fine paper grain */
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .27  0 0 0 0 .22  0 0 0 .08 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>"),
+      var(--c);
+    display: flex; align-items: center; justify-content: center;
+  }
+  /* Soft wrinkles in the sheet, lit from the same upper-left light. Each
+     note shows a different patch of the same crinkle. */
+  .crinkle {
+    position: absolute; inset: 0; pointer-events: none;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='520' height='520'><filter id='c' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='.0055' numOctaves='3' seed='7' stitchTiles='stitch'/><feDiffuseLighting surfaceScale='9' diffuseConstant='1.15' lighting-color='white'><feDistantLight azimuth='225' elevation='58'/></feDiffuseLighting></filter><rect width='100%' height='100%' filter='url(%23c)'/></svg>");
+    background-size: 520px 520px;
+    background-position: var(--cx, 0) var(--cy, 0);
+    mix-blend-mode: multiply;
+    opacity: .3;
+  }
+
+  /* The free end bows out toward you, so below the glue the paper tilts up
+     into the overhead light: it gets gradually, slightly brighter toward
+     the bottom. (Darkening it here is what made the notes look concave.)
+     The glued top stays plain, with no shading at all. */
+  .bend {
+    position: absolute; inset: 0; pointer-events: none;
+    /* leans toward whichever bottom corner stands further off, and is
+       stronger on notes that curve off the wall more */
+    background: linear-gradient(calc(180deg - var(--tw) * 35deg),
+      rgba(255, 255, 255, 0) 35%, rgba(255, 255, 255, .07) 65%, rgba(255, 255, 255, .17) 100%);
+    opacity: calc(var(--lift) * .6);
+  }
+
+  .art {
+    width: 84%; height: 84%; margin-top: 4%;
+    object-fit: contain; pointer-events: none;
+    -webkit-user-drag: none;
+  }
+  .cap { font-weight: 600; font-size: calc(var(--note) * 0.14); margin-top: 0; opacity: .7; }
+
+  .note.loading .paper { opacity: .85; }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="wall"></div>
+  <div class="desk"></div>
+
+  <header class="top">
+    <div class="band">los syringas</div>
+    <div class="switcher">
+      <button class="arrow" id="prev" aria-label="Previous song">‹</button>
+      <div>
+        <h1 id="song-title">sueños</h1>
+        <small id="song-sub">new single · 1 of 2</small>
+      </div>
+      <button class="arrow" id="next" aria-label="Next song">›</button>
+    </div>
+    <div class="controls">
+      <button id="all">stick 'em all</button>
+      <button id="clear">clear wall</button>
+    </div>
+  </header>
+
+  <div class="hint" id="hint">tap a note to stick it on the wall</div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const STEMS = [
+  // k: how far the free end stands off the wall. tw: which bottom corner
+  // stands further off (+ right, - left). top/tl: a top corner that hasn't
+  // fully stuck ("r"/"l") and how much. Pearson's and the keys curve the
+  // most; Josué's has a lifted top-right corner, like the photo.
+  { id: "josue",   cap: "josué",   who: "josué",   what: "guitar", file: "stems/josue-guitar.mp3",   c: "#ebe9e2", k: 1.0,  tw: 0.3,   top: "r", tl: 1 },
+  { id: "pearson", cap: "pearson", who: "pearson", what: "guitar", file: "stems/pearson-guitar.mp3", c: "#eceae3", k: 1.35, tw: -0.5 },
+  { id: "bass",    cap: "bass",    who: "shawn",   what: "bass",   file: "stems/bass.mp3",           c: "#eae8e1", k: 1.1,  tw: 0.15,  top: "l", tl: 0.6 },
+  { id: "drums",   cap: "drums",   who: "luke",    what: "drums",  file: "stems/drums.mp3",          c: "#ecebe4", k: 0.85, tw: -0.2 },
+  { id: "keys",    cap: "keys",    who: "josh",    what: "keys",   file: "stems/keys.mp3",           c: "#ebe8e1", k: 1.4,  tw: 0.55 },
+];
+
+/* ---------- Shadows ----------
+   One light, from the upper right. A point on the note that stands z off
+   the wall throws its shadow (LX*z, LY*z) away from itself. How far a point
+   stands off grows down the note from the glued top (depth), and, for a
+   twisted note, from one side to the other (twist). Those are linear in
+   x and y, so the whole shadow is one 2D matrix about the top-centre. */
+const LX = -0.42, LY = 1;
+function shadowMatrix(depth, twist, widen) {
+  const a = (1 + widen) * (1 + LX * twist);
+  const b = LY * twist;
+  const c = (1 + widen) * LX * depth;
+  const d = 1 + LY * depth;
+  return `matrix(${a.toFixed(4)}, ${b.toFixed(4)}, ${c.toFixed(4)}, ${d.toFixed(4)}, 0, 0)`;
+}
+/* Set how far the note stands off (lf) and how far it's held (h), and
+   recompute its two shadows to match. */
+function pose(n, lf, h) {
+  const lift = n.s.k * lf, flat = 1 - h;
+  const el = n.el.style;
+  el.setProperty("--lf", lf.toFixed(3));
+  el.setProperty("--h", h.toFixed(3));
+  el.setProperty("--mh", shadowMatrix(lift * 0.11 * flat, n.s.tw * lift * 0.1 * flat, lift * 0.012));
+  el.setProperty("--ms", shadowMatrix(lift * 0.15 * flat, n.s.tw * lift * 0.13 * flat, lift * 0.025));
+}
+
+const stage = document.getElementById("stage");
+const hint = document.getElementById("hint");
+const toastEl = document.getElementById("toast");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+/* ---------- Audio ---------- */
+const AC = window.AudioContext || window.webkitAudioContext;
+const ctx = new AC();
+const master = ctx.createGain();
+master.connect(ctx.destination);
+const chain = {};
+let started = false;
+
+const loaded = Promise.all(STEMS.map(async (s) => {
+  const res = await fetch(s.file);
+  const buf = await ctx.decodeAudioData(await res.arrayBuffer());
+  const gain = ctx.createGain();
+  gain.gain.value = 0;
+  gain.connect(master);
+  chain[s.id] = { buf, gain };
+})).then(() => {
+  document.querySelectorAll(".note").forEach((n) => n.classList.remove("loading"));
+  if (!hint.classList.contains("gone")) hint.textContent = "tap a note to stick it on the wall";
+});
+
+/* Every stem starts at the same instant and loops forever at zero volume.
+   Sticking a note only opens its gain, so stems can never drift apart. */
+async function ensureStarted() {
+  if (ctx.state !== "running") ctx.resume();
+  if (started) return;
+  started = true;
+  await loaded;
+  const t0 = ctx.currentTime + 0.08;
+  for (const s of STEMS) {
+    const src = ctx.createBufferSource();
+    src.buffer = chain[s.id].buf;
+    src.loop = true;
+    src.connect(chain[s.id].gain);
+    src.start(t0);
+  }
+  for (const n of notes) setStem(n, !!n.sounding);
+}
+
+/* n.sounding tracks whether the stem should be heard, which is only once
+   the note is pressed to the wall, not when the click starts the move. */
+function setStem(n, on) {
+  n.sounding = on;
+  const c = chain[n.s.id];
+  if (!c || !started) return;
+  const now = ctx.currentTime;
+  c.gain.gain.cancelScheduledValues(now);
+  c.gain.gain.setTargetAtTime(on ? 1 : 0, now, on ? 0.09 : 0.14);
+}
+
+/* ---------- Note outlines ----------
+   In 0..1 box units, matched to the reference photos. The bottom edge is
+   straight. The sides are what curve: straight through the glue, then
+   flaring out a hair toward the bottom, which bows nearer the eye. The top
+   edge has the faintest arch, its corners a touch lower than its middle.
+   Every note gets slightly different numbers. */
+const svgNS = "http://www.w3.org/2000/svg";
+const defs = document.createElementNS(svgNS, "svg");
+defs.setAttribute("width", "0");
+defs.setAttribute("height", "0");
+defs.style.position = "absolute";
+document.body.appendChild(defs);
+
+function shapeFor(i, s) {
+  const f = (v) => v.toFixed(4);
+  // how far each side flares by the bottom: more on the side whose corner
+  // stands further off the wall, since it comes nearer the eye
+  const aL = 0.004 + 0.006 * s.k * (1 + Math.max(0, -s.tw) * 1.2) + rnd(0, 0.003);
+  const aR = 0.004 + 0.006 * s.k * (1 + Math.max(0, s.tw) * 1.2) + rnd(0, 0.003);
+  const tc = rnd(0.002, 0.006);          // top corners sit this much below the middle
+  // A top corner that hasn't fully stuck comes toward the eye: it sits a
+  // touch further out and lower, and its side bows out near the top, in
+  // then out again lower down: a slight S, like the photo.
+  const tR = s.top === "r" ? s.tl : 0;
+  const tL = s.top === "l" ? s.tl : 0;
+  const xr0 = 1 - aR + tR * 0.01, yr0 = tc + tR * 0.006;
+  const xl0 = aL - tL * 0.01,     yl0 = tc + tL * 0.006;
+  const xrm = 1 - aR * 0.6 + rnd(-0.003, 0.002);   // each side at mid-height
+  const xlm = aL * 0.6 - rnd(-0.003, 0.002);
+  let d = `M${f(xl0)},${f(yl0)} `;
+  d += `C0.35,0 0.65,0 ${f(xr0)},${f(yr0)} `;                              // top: faint arch
+  d += `C${f(xr0 + tR * 0.006)},0.14 ${f(xrm)},0.3 ${f(xrm)},0.5 `;         // right side, upper
+  d += `C${f(xrm)},0.7 1,0.8 1,1 `;                                        // right side, lower
+  d += `L0,1 `;                                                            // bottom: straight
+  d += `C0,0.8 ${f(xlm)},0.7 ${f(xlm)},0.5 `;                              // left side, lower
+  d += `C${f(xlm)},0.3 ${f(xl0 - tL * 0.006)},0.14 ${f(xl0)},${f(yl0)} Z`;  // left side, upper
+  const cp = document.createElementNS(svgNS, "clipPath");
+  cp.id = `shape-${i}`;
+  cp.setAttribute("clipPathUnits", "objectBoundingBox");
+  const p = document.createElementNS(svgNS, "path");
+  p.setAttribute("d", d);
+  cp.appendChild(p);
+  defs.appendChild(cp);
+  return `url(#shape-${i})`;
+}
+
+/* ---------- Layout ---------- */
+const notes = STEMS.map((s, i) => {
+  const el = document.createElement("button");
+  el.className = "note loading";
+  el.style.setProperty("--c", s.c);
+  el.style.setProperty("--shape", shapeFor(i, s));
+  el.style.setProperty("--tw", s.tw);
+  if (s.top) { el.dataset.top = s.top; el.style.setProperty("--tl", s.tl); }
+  el.innerHTML = `<div class="body"><div class="sh sh-soft"><i></i></div><div class="sh sh-hard"><i></i></div><div class="sh-top"></div><div class="paper"><img class="art" src="drawings/${s.id}.png" alt=""><div class="crinkle"></div><div class="bend"></div><div class="topcurl"></div></div></div>`;
+  el.style.setProperty("--k", s.k);
+  el.style.setProperty("--cx", `${Math.round(rnd(0, 520))}px`);
+  el.style.setProperty("--cy", `${Math.round(rnd(0, 520))}px`);
+  stage.appendChild(el);
+  const n = {
+    s, el, i, onWall: false, busy: false,
+    deskJ: { x: rnd(-0.25, 0.25), y: rnd(-0.22, 0.22), r: rnd(-16, 16) },
+    wallJ: { x: 0, y: 0, r: 0 },
+    pos: null,
+  };
+  el.addEventListener("click", () => toggle(n));
+  updateLabel(n);
+  return n;
+});
+
+function updateLabel(n) {
+  n.el.setAttribute("aria-pressed", String(n.onWall));
+  n.el.setAttribute("aria-label", `${n.s.who}, ${n.s.what}: ${n.onWall ? "on the wall, playing" : "on the desk"}`);
+}
+
+function metrics() {
+  const W = innerWidth, H = innerHeight;
+  const cs = getComputedStyle(document.documentElement);
+  const probe = notes[0].el.getBoundingClientRect();
+  const size = notes[0].el.offsetWidth;
+  const deskH = document.querySelector(".desk").offsetHeight;
+  return { W, H, size, deskTop: H - deskH, deskH, narrow: W < 600 };
+}
+
+/* Each note has its own spot on the wall, so placements never pile up. */
+const WIDE_SLOTS   = [[0.15, 0.3], [0.32, 0.78], [0.5, 0.18], [0.68, 0.72], [0.85, 0.28]];
+const NARROW_SLOTS = [[0.3, 0.2], [0.7, 0.3], [0.3, 0.52], [0.7, 0.62], [0.5, 0.86]];
+
+function deskPose(n, m) {
+  const slotW = m.W / notes.length;
+  const deskScale = m.narrow ? 0.82 : 0.86;
+  const half = (m.size * deskScale) / 2 + 8;
+  const raw = slotW * (n.i + 0.5) + n.deskJ.x * Math.min(slotW, m.size) * 0.6;
+  const x = Math.min(m.W - half, Math.max(half, raw));
+  const y = m.deskTop + m.deskH * 0.52 + n.deskJ.y * m.deskH * 0.5;
+  return { x, y, r: n.deskJ.r, k: deskScale };
+}
+
+function wallPose(n, m) {
+  const slots = m.narrow ? NARROW_SLOTS : WIDE_SLOTS;
+  const [sx, sy] = slots[n.i];
+  const top = m.narrow ? 120 : 110;
+  const bottom = m.deskTop - 24;
+  const usable = Math.max(bottom - top, m.size);
+  const x = sx * m.W + n.wallJ.x * m.size;
+  const y = top + sy * (usable - m.size) + m.size / 2 + n.wallJ.y * m.size;
+  return { x, y, r: n.wallJ.r, k: 1 };
+}
+
+const tf = (p, m, extraK = 1) =>
+  `translate(${p.x - m.size / 2}px, ${p.y - m.size / 2}px) rotate(${p.r}deg) scale(${p.k * extraK})`;
+
+function place(n, m) {
+  n.pos = n.onWall ? wallPose(n, m) : deskPose(n, m);
+  n.el.style.transform = tf(n.pos, m);
+  pose(n, n.onWall ? 1 : 0.35, 0);
+}
+
+function layout() {
+  const m = metrics();
+  notes.forEach((n) => place(n, m));
+}
+
+/* ---------- Motion ---------- */
+let zTop = 20;
+
+function toggle(n) {
+  if (n.busy) return;
+  ensureStarted();
+  n.onWall ? peel(n) : stick(n);
+}
+
+/* Placing a note is one continuous gesture, not separate beats. A single
+   progress value t (0..1) drives everything at once:
+     travel  follows a minimum-jerk curve, the path a hand takes when it
+             reaches for something: it eases out and eases in with no
+             pauses in between.
+     hold    one smooth bump: the sheet comes off the surface, is highest
+             a little before halfway, and settles back as it arrives. Scale,
+             a slight rise in the path, and the shadow all follow it.
+   So the pick-up blends into the carry, and the carry into the press. */
+const STICK_MS = 580;
+const PEEL_MS = 500;
+const LIFT_SCALE = 0.06;   // how much bigger it looks at the top of the hold
+const LIFT_RISE = 0.05;    // how far up the path bows, as a share of note size
+
+const travel = (t) => t * t * t * (10 + t * (-15 + 6 * t));
+const hold = (t) => Math.pow(Math.max(0, Math.sin(Math.PI * Math.pow(t, 0.75))), 1.15);
+const lerp = (a, b, s) => a + (b - a) * s;
+
+function stick(n) {
+  const m = metrics();
+  const from = n.pos;
+  n.wallJ = { x: rnd(-0.08, 0.08), y: rnd(-0.08, 0.08), r: rnd(-3, 3) };
+  n.onWall = true;
+  const to = wallPose(n, m);
+  n.el.style.zIndex = ++zTop;
+  hint.classList.add("gone");
+  updateLabel(n);
+  move(n, m, from, to, STICK_MS, {
+    lf: [0.35, 1],
+    // the stem comes in as the note meets the wall, not when it leaves
+    onPress: () => setStem(n, true),
+  });
+  n.pos = to;
+}
+
+function peel(n) {
+  const m = metrics();
+  const from = n.pos;
+  n.onWall = false;
+  n.deskJ = { x: rnd(-0.25, 0.25), y: rnd(-0.22, 0.22), r: rnd(-16, 16) };
+  const to = deskPose(n, m);
+  setStem(n, false);
+  updateLabel(n);
+  move(n, m, from, to, PEEL_MS, {
+    lf: [1, 0.35],
+    onDone: () => { n.el.style.zIndex = 10 + n.i; },
+  });
+  n.pos = to;
+}
+
+function move(n, m, from, to, ms, { lf, onPress, onDone }) {
+  const el = n.el;
+  const finish = () => {
+    el.style.transform = tf(to, m);
+    pose(n, lf[1], 0);
+    n.busy = false;
+    if (onPress && !pressed) onPress();
+    onDone && onDone();
+  };
+  let pressed = false;
+  if (reduce) { finish(); return; }
+  n.busy = true;
+  const t0 = performance.now();
+  const frame = (now) => {
+    const t = Math.min(1, (now - t0) / ms);
+    const s = travel(t);
+    const h = t < 1 ? hold(t) : 0;
+    const p = {
+      x: lerp(from.x, to.x, s),
+      y: lerp(from.y, to.y, s) - h * m.size * LIFT_RISE,
+      r: lerp(from.r, to.r, s),
+      k: lerp(from.k, to.k, s) * (1 + h * LIFT_SCALE),
+    };
+    el.style.transform = tf(p, m);
+    pose(n, lerp(lf[0], lf[1], s), h);
+    if (onPress && !pressed && t > 0.82) { pressed = true; onPress(); }
+    if (t < 1) requestAnimationFrame(frame);
+    else finish();
+  };
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Controls ---------- */
+document.getElementById("all").addEventListener("click", () => {
+  ensureStarted();
+  notes.filter((n) => !n.onWall).forEach((n, k) => setTimeout(() => stick(n), k * 110));
+});
+document.getElementById("clear").addEventListener("click", () => {
+  notes.filter((n) => n.onWall).forEach((n, k) => setTimeout(() => peel(n), k * 90));
+});
+
+let toastT;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastT);
+  toastT = setTimeout(() => toastEl.classList.remove("show"), 1800);
+}
+document.getElementById("prev").addEventListener("click", () => toast("older songs come next: this one's just sueños"));
+document.getElementById("next").addEventListener("click", () => toast("older songs come next: this one's just sueños"));
+
+document.addEventListener("visibilitychange", () => {
+  if (!started) return;
+  document.hidden ? ctx.suspend() : ctx.resume();
+});
+
+addEventListener("resize", layout);
+document.fonts.ready.then(layout);
+layout();
+</script>
+</body>
+</html>
