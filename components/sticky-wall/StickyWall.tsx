@@ -3,7 +3,6 @@
 import "./sticky-wall.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getIsMuted } from "@/lib/audioAnalysers";
-import { songs, neighborSong, type SongId } from "@/lib/songs";
 
 /* Ported from docs/suenos-sticky-wall/prototype/index.html. The look and
    motion numbers are the approved ones in sticky-notes-final-rendering.md;
@@ -91,8 +90,16 @@ function shapePath(s: StemDef, r: (a: number, b: number) => number) {
 }
 
 // Each note has its own spot on the wall, so placements never pile up.
-const WIDE_SLOTS = [[0.15, 0.3], [0.32, 0.78], [0.5, 0.18], [0.68, 0.72], [0.85, 0.28]];
-const NARROW_SLOTS = [[0.3, 0.2], [0.7, 0.3], [0.3, 0.52], [0.7, 0.62], [0.5, 0.86]];
+// [x across the screen, y down the wall band]. Three go above the band name
+// and two below, so "Los Syringas" stays readable in the middle.
+const WIDE_SLOTS = [[0.2, 0.02], [0.5, 0], [0.8, 0.04], [0.33, 1], [0.67, 0.96]];
+const NARROW_SLOTS = [[0.2, 0.02], [0.5, 0], [0.8, 0.04], [0.3, 1], [0.7, 0.96]];
+// Top of the wall band, just under the controls (matches --wall-top in CSS).
+const WALL_TOP = 120;
+
+// Hover: the sheet comes partway off the wall, same shadow as when carried.
+const HOVER_H = 0.5;    // share of the full carry lift
+const HOVER_MS = 200;
 
 interface Pose { x: number; y: number; r: number; k: number }
 interface Jitter { x: number; y: number; r: number }
@@ -106,9 +113,12 @@ interface NoteState {
   deskJ: Jitter;
   wallJ: Jitter;
   pos: Pose | null;
+  hov: number;        // 0..1 hover progress
+  hovTarget: number;  // 0 or 1
+  hovRaf: number;
 }
 
-export default function StickyWall({ songId, onSwitch }: { songId: SongId; onSwitch: (id: SongId) => void }) {
+export default function StickyWall() {
   const stageRef = useRef<HTMLDivElement>(null);
   const deskRef = useRef<HTMLDivElement>(null);
   const noteRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -117,9 +127,6 @@ export default function StickyWall({ songId, onSwitch }: { songId: SongId; onSwi
   const [loaded, setLoaded] = useState(false);
   const [hintGone, setHintGone] = useState(false);
   const [muted, setMuted] = useState(false);
-
-  const songIndex = songs.findIndex((s) => s.id === songId);
-  const song = songs[songIndex];
 
   // Per-note static look: outline, texture offsets, first resting jitter.
   const looks = useMemo(() => {
@@ -148,6 +155,7 @@ export default function StickyWall({ songId, onSwitch }: { songId: SongId; onSwi
       s, i, el: noteRefs.current[i]!,
       onWall: false, busy: false, sounding: false,
       deskJ: looks[i].deskJ, wallJ: { x: 0, y: 0, r: 0 }, pos: null,
+      hov: 0, hovTarget: 0, hovRaf: 0,
     }));
 
     /* ---------- Audio ----------
@@ -276,8 +284,7 @@ export default function StickyWall({ songId, onSwitch }: { songId: SongId; onSwi
 
     function wallPose(n: NoteState, m: M): Pose {
       const [sx, sy] = (m.narrow ? NARROW_SLOTS : WIDE_SLOTS)[n.i];
-      // Below the site nav + the switcher header.
-      const top = m.narrow ? 200 : 160;
+      const top = WALL_TOP;
       const bottom = m.deskTop - 24;
       const usable = Math.max(bottom - top, m.size);
       const x = sx * m.W + n.wallJ.x * m.size;
@@ -295,7 +302,7 @@ export default function StickyWall({ songId, onSwitch }: { songId: SongId; onSwi
     }
     function layout() {
       const m = metrics();
-      notes.forEach((n) => { if (!n.busy) place(n, m); });
+      notes.forEach((n) => { if (!n.busy) { place(n, m); if (n.hov) renderHover(n, m); } });
     }
 
     /* ---------- Motion ----------
@@ -310,12 +317,18 @@ export default function StickyWall({ songId, onSwitch }: { songId: SongId; onSwi
     ) {
       const el = n.el;
       let pressed = false;
+      // If it was already lifted by hover, carry on from that lift.
+      const h0 = ease(n.hov) * HOVER_H;
+      cancelHover(n);
+      n.hov = 0;
       const finish = () => {
         el.style.transform = tf(to, m);
         pose(n, lf[1], 0);
         n.busy = false;
         if (onPress && !pressed) onPress();
         onDone?.();
+        // Still under the cursor after landing? Lift again.
+        if (n.hovTarget && el.matches(":hover")) hoverTo(n, 1);
       };
       if (reduce) { finish(); return; }
       n.busy = true;
@@ -325,7 +338,7 @@ export default function StickyWall({ songId, onSwitch }: { songId: SongId; onSwi
         if (disposed) return;
         const t = Math.min(1, (now - t0) / ms);
         const s = travel(t);
-        const h = t < 1 ? hold(t) : 0;
+        const h = t < 1 ? Math.max(hold(t), h0 * (1 - s)) : 0;
         el.style.transform = tf({
           x: lerp(from.x, to.x, s),
           y: lerp(from.y, to.y, s) - h * m.size * LIFT_RISE,
@@ -377,11 +390,49 @@ export default function StickyWall({ songId, onSwitch }: { songId: SongId; onSwi
       if (n.onWall) peel(n); else stick(n);
     }
 
-    const clickHandlers = notes.map((n) => {
-      const h = () => toggle(n);
-      n.el.addEventListener("click", h);
+    /* ---------- Hover ----------
+       Mouse only. Eases the resting note partway into the carried pose:
+       a touch bigger, a touch higher, the crisp shadow giving way to the
+       soft feathered one. */
+    function ease(x: number) { return x * x * (3 - 2 * x); }
+    function renderHover(n: NoteState, m: M) {
+      if (!n.pos) return;
+      const hv = ease(n.hov) * HOVER_H;
+      n.el.style.transform = tf({ ...n.pos, y: n.pos.y - hv * m.size * LIFT_RISE }, m, 1 + hv * LIFT_SCALE);
+      pose(n, n.onWall ? 1 : 0.35, hv);
+    }
+    function cancelHover(n: NoteState) {
+      if (n.hovRaf) { cancelAnimationFrame(n.hovRaf); rafs.delete(n.hovRaf); n.hovRaf = 0; }
+    }
+    function hoverTo(n: NoteState, target: number) {
+      n.hovTarget = target;
+      if (n.busy) return;
+      if (reduce) { n.hov = target; renderHover(n, metrics()); return; }
+      if (n.hovRaf) return; // already easing; it reads hovTarget each frame
+      let last = performance.now();
+      const frame = (now: number) => {
+        rafs.delete(n.hovRaf);
+        n.hovRaf = 0;
+        if (disposed || n.busy) return;
+        const step = (now - last) / HOVER_MS;
+        last = now;
+        n.hov = n.hovTarget > n.hov ? Math.min(n.hovTarget, n.hov + step) : Math.max(n.hovTarget, n.hov - step);
+        renderHover(n, metrics());
+        if (n.hov !== n.hovTarget) { n.hovRaf = requestAnimationFrame(frame); rafs.add(n.hovRaf); }
+      };
+      n.hovRaf = requestAnimationFrame(frame);
+      rafs.add(n.hovRaf);
+    }
+
+    const handlers = notes.map((n) => {
+      const click = () => toggle(n);
+      const enter = (e: PointerEvent) => { if (e.pointerType === "mouse") hoverTo(n, 1); };
+      const leave = (e: PointerEvent) => { if (e.pointerType === "mouse") hoverTo(n, 0); };
+      n.el.addEventListener("click", click);
+      n.el.addEventListener("pointerenter", enter);
+      n.el.addEventListener("pointerleave", leave);
       label(n);
-      return h;
+      return { click, enter, leave };
     });
 
     actions.current = {
@@ -407,7 +458,11 @@ export default function StickyWall({ songId, onSwitch }: { songId: SongId; onSwi
       window.removeEventListener("resize", layout);
       window.removeEventListener("muteChange", onMuteChange);
       document.removeEventListener("visibilitychange", onVisibility);
-      notes.forEach((n, i) => n.el.removeEventListener("click", clickHandlers[i]));
+      notes.forEach((n, i) => {
+        n.el.removeEventListener("click", handlers[i].click);
+        n.el.removeEventListener("pointerenter", handlers[i].enter);
+        n.el.removeEventListener("pointerleave", handlers[i].leave);
+      });
       rafs.forEach((id) => cancelAnimationFrame(id));
       timers.forEach((t) => clearTimeout(t));
       sources.forEach((s) => { try { s.stop(); } catch { /* not started */ } });
@@ -437,25 +492,21 @@ export default function StickyWall({ songId, onSwitch }: { songId: SongId; onSwi
       <div className="wall" />
       <div ref={deskRef} className="desk" />
 
+      <div className="center">
+        <h1>Los Syringas</h1>
+        <p className="sub">Indie Surf Rock Band · Boise, ID</p>
+        <p className={`hint${hintGone ? " gone" : ""}`}>
+          {loaded ? "tap a note to stick it on the wall" : "loading the stems…"}
+        </p>
+      </div>
+
       <header className="top">
-        <div className="switcher">
-          <button className="arrow" aria-label="Previous song" onClick={() => onSwitch(neighborSong(songId, -1))}>‹</button>
-          <div>
-            <h1>{song.title}</h1>
-            <small>{song.sub} · {songIndex + 1} of {songs.length}</small>
-          </div>
-          <button className="arrow" aria-label="Next song" onClick={() => onSwitch(neighborSong(songId, 1))}>›</button>
-        </div>
         <div className="controls">
           <button onClick={() => actions.current?.all()}>stick &apos;em all</button>
           <button onClick={() => actions.current?.clear()}>clear wall</button>
           <button className="mute" onClick={() => actions.current?.toggleMute()}>{muted ? "sound on" : "mute"}</button>
         </div>
       </header>
-
-      <div className={`hint${hintGone ? " gone" : ""}`}>
-        {loaded ? "tap a note to stick it on the wall" : "loading the stems…"}
-      </div>
 
       {STEMS.map((s, i) => (
         <button

@@ -36,7 +36,7 @@ export default function HomeSongs({ initialSong }: { initialSong: SongId }) {
   return (
     <div key={song} className="animate-scene-in">
       {song === "suenos" ? (
-        <StickyWall songId={song} onSwitch={switchTo} />
+        <StickyWall />
       ) : (
         <HeroSection songId={song} onSwitch={switchTo} />
       )}
