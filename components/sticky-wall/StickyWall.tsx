@@ -92,13 +92,16 @@ function shapePath(s: StemDef, r: (a: number, b: number) => number) {
 // Where each note goes on the wall: a tight cluster around the band name,
 // three just above it and two just below. [column in note-widths from the
 // centre, row (0 above / 1 below), small vertical nudge in note-heights].
+// Indexed like STEMS. Reads: keys, pearson, bass on top; drums, josué below.
 const CLUSTER: [number, 0 | 1, number][] = [
-  [-1, 0, 0.03],   // josué
-  [0, 0, -0.05],   // pearson
-  [1, 0, 0.05],    // bass
-  [-0.5, 1, -0.02], // drums
-  [0.5, 1, 0.04],  // keys
+  [0.5, 1, 0.04],   // josué  — bottom right
+  [0, 0, -0.05],    // pearson — top middle
+  [1, 0, 0.05],     // bass   — top right
+  [-0.5, 1, -0.02], // drums  — bottom left
+  [-1, 0, 0.03],    // keys   — top left
 ];
+// Already on the wall when the page opens. They sound from the first tap.
+const START_ON_WALL = new Set(["keys", "bass"]);
 const CLUSTER_STEP_X = 1.12; // centre-to-centre, in note widths
 const CLUSTER_GAP_Y = 0.14;  // space between a row and the band name, in note heights
 // Top of the wall band, just under the controls (matches --wall-top in CSS).
@@ -144,6 +147,7 @@ export default function StickyWall() {
       cx: `${Math.round(r(0, 520))}px`,
       cy: `${Math.round(r(0, 520))}px`,
       deskJ: { x: r(-0.25, 0.25), y: r(-0.22, 0.22), r: r(-16, 16) },
+      wallJ: { x: r(-0.04, 0.04), y: r(-0.04, 0.04), r: r(-3, 3) },
     }));
   }, []);
 
@@ -162,8 +166,8 @@ export default function StickyWall() {
 
     const notes: NoteState[] = STEMS.map((s, i) => ({
       s, i, el: noteRefs.current[i]!,
-      onWall: false, busy: false, sounding: false,
-      deskJ: looks[i].deskJ, wallJ: { x: 0, y: 0, r: 0 }, pos: null,
+      onWall: START_ON_WALL.has(s.id), busy: false, sounding: START_ON_WALL.has(s.id),
+      deskJ: looks[i].deskJ, wallJ: looks[i].wallJ, pos: null,
       hov: 0, hovTarget: 0, hovRaf: 0,
     }));
 
@@ -375,7 +379,6 @@ export default function StickyWall() {
       n.onWall = true;
       const to = wallPose(n, m);
       n.el.style.zIndex = String(++zTop);
-      setHintGone(true);
       label(n);
       // The stem comes in as the note meets the wall, not when it leaves.
       move(n, m, from, to, STICK_MS, { lf: [0.35, 1], onPress: () => setStem(n, true) });
@@ -463,6 +466,14 @@ export default function StickyWall() {
       },
     };
 
+    // Browsers only allow sound after a tap, so the first tap anywhere on the
+    // wall starts it (with keys + bass already up, that's the first thing heard).
+    function onFirstTap() {
+      ensureStarted();
+      setHintGone(true);
+    }
+    stage.addEventListener("click", onFirstTap);
+
     window.addEventListener("resize", layout);
     layout();
     setReady(true);
@@ -471,6 +482,7 @@ export default function StickyWall() {
     return () => {
       disposed = true;
       window.removeEventListener("resize", layout);
+      stage.removeEventListener("click", onFirstTap);
       window.removeEventListener("muteChange", onMuteChange);
       document.removeEventListener("visibilitychange", onVisibility);
       notes.forEach((n, i) => {
@@ -513,7 +525,7 @@ export default function StickyWall() {
           <p className="sub">Indie Surf Rock Band · Boise, ID</p>
         </div>
         <p className={`hint${hintGone ? " gone" : ""}`}>
-          {loaded ? "tap a note to stick it on the wall" : "loading the stems…"}
+          {loaded ? "tap anywhere to play · tap a note to stick it up" : "loading the stems…"}
         </p>
       </div>
 
