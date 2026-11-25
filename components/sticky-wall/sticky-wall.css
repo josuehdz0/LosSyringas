@@ -200,10 +200,11 @@
 .sticky-wall.theme-white { --wall: #ffffff; background: #ffffff; }
 .sticky-wall.theme-white .wall { background: #ffffff; }
 /* Overrides each note's own off-white --c; slight per-note variation. */
-/* Light pastel yellow. Classic Canary Yellow was #fff7a6 / #fff6a0 / #fff8ad. */
-.sticky-wall.theme-white .note .paper { --c: #fffac8; }
-.sticky-wall.theme-white .note:nth-of-type(2n) .paper { --c: #fff9c2; }
-.sticky-wall.theme-white .note:nth-of-type(3n) .paper { --c: #fffbcf; }
+/* Pastel blue. Earlier tries: light pastel yellow #fffac8 / #fff9c2 / #fffbcf,
+   Canary Yellow #fff7a6 / #fff6a0 / #fff8ad. */
+.sticky-wall.theme-white .note .paper { --c: #cfe8f7; }
+.sticky-wall.theme-white .note:nth-of-type(2n) .paper { --c: #cae5f5; }
+.sticky-wall.theme-white .note:nth-of-type(3n) .paper { --c: #d4ebf8; }
 /* A white wall reflects more light, so shadows read a touch lighter. */
 .sticky-wall.theme-white .sh-hard i { background: rgba(40, 36, 30, .24); }
 .sticky-wall.theme-white .sh-soft i { background: rgba(40, 36, 30, .2); }
