@@ -3,7 +3,6 @@
 import { useRef, useEffect } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import { songs, neighborSong, type SongId } from "@/lib/songs";
 import { stemAnalysers, getActiveStemIds, getIsMuted, getIsPlaying } from "@/lib/audioAnalysers";
 
 const FADE_DURATION = 1.0;
@@ -28,7 +27,7 @@ const CANVAS_H = STEM_IDS.length * LANE_H + (STEM_IDS.length - 1) * LANE_GAP; //
 const AMP_PX = LANE_H + LANE_GAP * 0.6;
 const SMOOTH_ALPHA = 0.18;
 
-export default function HeroSection({ songId, onSwitch }: { songId: SongId; onSwitch: (id: SongId) => void }) {
+export default function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
   const h1Ref = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLDivElement>(null);
@@ -214,9 +213,6 @@ export default function HeroSection({ songId, onSwitch }: { songId: SongId; onSw
     return () => { document.body.style.overflow = ""; };
   }, []);
 
-  const songIndex = songs.findIndex((x) => x.id === songId);
-  const arrow = "pointer-events-auto flex items-center justify-center w-8 h-8 rounded-full text-white/80 hover:text-white hover:bg-white/15 active:scale-90 transition";
-
   return (
     <section className="relative flex items-center justify-center overflow-hidden" style={{ minHeight: "100dvh" }}>
       <video ref={videoA} autoPlay muted playsInline className="absolute inset-0 w-full object-cover" style={{ height: "100dvh" }} src="/hero.mp4" />
@@ -248,14 +244,6 @@ export default function HeroSection({ songId, onSwitch }: { songId: SongId; onSw
             <p className="text-white/80" style={{ fontSize: "clamp(0.9rem, 2vw, 1.125rem)" }}>
               Indie Surf Rock Band · Boise, ID
             </p>
-            {/* Song switcher: back to the Sueños sticky wall */}
-            <div className="pointer-events-auto inline-flex items-center gap-1 rounded-full bg-black/25 backdrop-blur-md px-1 py-1 text-white">
-              <button onClick={() => onSwitch(neighborSong(songId, -1))} className={arrow} aria-label="Previous song">‹</button>
-              <span className="px-2 text-xs font-semibold uppercase tracking-wider whitespace-nowrap">
-                {songs[songIndex].title} · {songIndex + 1} of {songs.length}
-              </span>
-              <button onClick={() => onSwitch(neighborSong(songId, 1))} className={arrow} aria-label="Next song">›</button>
-            </div>
           </div>
         </div>
       </div>

@@ -13,8 +13,3 @@ export function isSongId(v: unknown): v is SongId {
 export function songHref(id: SongId): string {
   return id === songs[0].id ? "/" : `/?song=${id}`;
 }
-
-export function neighborSong(id: SongId, step: 1 | -1): SongId {
-  const i = songs.findIndex((s) => s.id === id);
-  return songs[(i + step + songs.length) % songs.length].id;
-}
