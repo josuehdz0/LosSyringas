@@ -568,6 +568,7 @@ export default function StickyWall() {
           key={s.id}
           ref={(el) => { noteRefs.current[i] = el; }}
           className={`note${loaded ? "" : " loading"}`}
+          data-stem={s.id}
           data-top={s.top}
           aria-pressed={false}
           aria-label={`${s.who}, ${s.what}: off the wall`}
