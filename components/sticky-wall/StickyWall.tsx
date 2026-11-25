@@ -134,6 +134,7 @@ const WAVE_STAGGER = 130;  // between one note starting and the next
 const WAVE_UP_MS = 320;    // lift (slower than a mouse hover, to read as a wave)
 const WAVE_HOLD = 90;      // at the top
 const WAVE_DOWN_MS = 380;  // settle
+const WAVE_REPEAT = 5000;  // repeat this often while no note is on the wall
 
 interface Pose { x: number; y: number; r: number; k: number }
 interface Jitter { x: number; y: number; r: number }
@@ -160,7 +161,7 @@ export default function StickyWall() {
   const [ready, setReady] = useState(false);
   const audio = useSuenosAudio();
   const loaded = audio.loaded;
-  const hintGone = audio.running;
+  const [wallCount, setWallCount] = useState(0);
   const [theme, setTheme] = useState<WallTheme>(WALL_THEME);
 
   useEffect(() => {
@@ -193,11 +194,12 @@ export default function StickyWall() {
       timers.add(t);
     };
 
+    let ready0 = false; // set once setup's done, so label() can restart the nudge
     const playingNow = getSuenosSounding();
     const notes: NoteState[] = STEMS.map((s, i) => ({
       s, i, el: noteRefs.current[i]!,
-      // Whatever is playing (keys + bass on a fresh visit or after a song
-      // switch; the visitor's own picks when coming back from another page).
+      // Whatever is playing (nothing on a fresh visit or after a song switch;
+      // the visitor's own picks when coming back from another page).
       onWall: playingNow.has(s.id), busy: false, sounding: playingNow.has(s.id),
       deskJ: looks[i].deskJ, wallJ: looks[i].wallJ, pos: null,
       hov: 0, hovTarget: 0, hovRaf: 0,
@@ -375,6 +377,9 @@ export default function StickyWall() {
 
     function label(n: NoteState) {
       n.el.setAttribute("aria-pressed", String(n.onWall));
+      const count = notes.filter((x) => x.onWall).length;
+      setWallCount(count);
+      if (count === 0 && ready0) nudgeLoop(); // wall emptied again: resume the nudge
       n.el.setAttribute("aria-label", `${n.s.who}, ${n.s.what}: ${n.onWall ? "on the wall, playing" : "off the wall"}`);
     }
 
@@ -439,19 +444,37 @@ export default function StickyWall() {
     layout();
     setReady(true);
 
-    // Arrival wave (skipped with reduced motion). A note the visitor is
-    // actually hovering or has just clicked is left alone.
-    if (!reduce) {
+    // Arrival wave (skipped with reduced motion), repeated every few seconds
+    // while the wall is empty as a nudge to pick a note. A note the visitor
+    // is actually hovering or has just clicked is left alone.
+    function wave(delay: number) {
       [...notes]
         .sort((a, b) => (a.pos?.x ?? 0) - (b.pos?.x ?? 0))
         .forEach((n, k) => {
-          const start = WAVE_DELAY + k * WAVE_STAGGER;
+          const start = delay + k * WAVE_STAGGER;
           later(() => { if (!n.busy && !n.hovTarget) hoverTo(n, 1, WAVE_UP_MS); }, start);
           later(() => {
             if (!n.busy && !n.el.matches(":hover")) hoverTo(n, 0, WAVE_DOWN_MS);
           }, start + WAVE_UP_MS + WAVE_HOLD);
         });
     }
+    let nudging = false;
+    function nudgeLoop() {
+      if (nudging || reduce) return;
+      nudging = true;
+      const tick = () => later(() => {
+        if (notes.some((n) => n.onWall)) { nudging = false; return; } // found it; stop
+        if (!document.hidden && !notes.some((n) => n.busy)) wave(0);
+        tick();
+      }, WAVE_REPEAT);
+      tick();
+    }
+    if (!reduce) {
+      wave(WAVE_DELAY);
+      nudgeLoop();
+    }
+    ready0 = true;
+    setWallCount(notes.filter((n) => n.onWall).length);
     document.fonts?.ready.then(() => { if (!disposed) layout(); });
 
     return () => {
@@ -493,8 +516,8 @@ export default function StickyWall() {
           <h1>Los Syringas</h1>
           <p className="sub">Indie Surf Rock Band · Boise, ID</p>
         </div>
-        <p className={`hint${hintGone ? " gone" : ""}`}>
-          {loaded ? "tap anywhere to play" : "loading the stems…"}
+        <p className={`hint${loaded && wallCount > 0 ? " gone" : ""}`}>
+          {loaded ? "tap a sticky note to play" : "loading the stems…"}
         </p>
       </div>
 

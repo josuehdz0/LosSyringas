@@ -19,8 +19,9 @@ export const SUENOS_STEMS = [
   { id: "keys",    file: "/stems/suenos/keys.mp3" },
 ] as const;
 
-/** On (stuck to the wall) when the song opens, and after every song switch. */
-export const SUENOS_DEFAULT_ON = ["keys", "bass"];
+/** On (stuck to the wall) when the song opens, and after every song switch.
+ *  Empty: the visitor picks the first note (that tap also unlocks audio). */
+export const SUENOS_DEFAULT_ON: string[] = [];
 
 let initialised = false;
 let ctx: AudioContext | null = null;
