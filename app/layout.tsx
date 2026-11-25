@@ -1,21 +1,27 @@
 import type { Metadata } from "next";
-import { Fraunces, DM_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import StemPlayer from "@/components/StemPlayer";
 import { Analytics } from "@vercel/analytics/next";
 
-const fraunces = Fraunces({
-  subsets: ["latin"],
+// Self-hosted (latin subset, variable weight) instead of next/font/google:
+// Vercel's builders started getting font URLs from Google Fonts that
+// next/font 14 can't parse, which failed the production build. These are
+// the same files Google serves (both fonts are SIL Open Font License).
+const fraunces = localFont({
+  src: [
+    { path: "./fonts/fraunces-latin.woff2", weight: "300 900", style: "normal" },
+    { path: "./fonts/fraunces-latin-italic.woff2", weight: "300 900", style: "italic" },
+  ],
   variable: "--font-display",
-  weight: ["300", "400", "700", "900"],
-  style: ["normal", "italic"],
+  display: "swap",
 });
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],
+const dmSans = localFont({
+  src: [{ path: "./fonts/dm-sans-latin.woff2", weight: "400 700", style: "normal" }],
   variable: "--font-body",
-  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const viewport = {
