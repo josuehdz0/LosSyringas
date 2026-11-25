@@ -192,3 +192,17 @@
   -webkit-user-drag: none;
 }
 .sticky-wall .note.loading .paper { opacity: .85; }
+
+/* ── Theme: white wall, classic light-yellow notes (experiment) ─────────────
+   Remove the theme-white class (WALL_THEME in StickyWall.tsx) to go back to
+   the plaster wall. Only colours change; shapes, shadows and paper texture
+   are the same. */
+.sticky-wall.theme-white { --wall: #ffffff; background: #ffffff; }
+.sticky-wall.theme-white .wall { background: #ffffff; }
+/* Overrides each note's own off-white --c; slight per-note variation. */
+.sticky-wall.theme-white .note .paper { --c: #fff7a6; }
+.sticky-wall.theme-white .note:nth-of-type(2n) .paper { --c: #fff6a0; }
+.sticky-wall.theme-white .note:nth-of-type(3n) .paper { --c: #fff8ad; }
+/* A white wall reflects more light, so shadows read a touch lighter. */
+.sticky-wall.theme-white .sh-hard i { background: rgba(40, 36, 30, .24); }
+.sticky-wall.theme-white .sh-soft i { background: rgba(40, 36, 30, .2); }

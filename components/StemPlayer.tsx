@@ -18,6 +18,9 @@ const stems = [
   { id: "magic",      label: "Magic",       image: "/Portraits/Mushrooms.png",file: "/stems/TSINFU demo flat_Magic.mp3" },
 ];
 
+// On when this song opens (and again whenever you switch back to it).
+const DEFAULT_ACTIVE = ["magic"];
+
 interface StemButtonProps {
   id: string;
   label: string;
@@ -54,7 +57,7 @@ function StemButton({ label, image, on, loading, circleRef, wrapperRef, onToggle
 }
 
 export default function StemPlayer() {
-  const [active, setActive] = useState<Set<string>>(new Set(["magic"]));
+  const [active, setActive] = useState<Set<string>>(new Set(DEFAULT_ACTIVE));
   const [muted, setMuted] = useState(false);
   const [playing, setPlaying] = useState(true);
   const [started, setStarted] = useState(false);
@@ -74,6 +77,8 @@ export default function StemPlayer() {
   const players = useRef<Record<string, Tone.Player>>({});
   const bridgeAudioRef = useRef<HTMLAudioElement | null>(null);
   const playingRef = useRef(true); // mirrors playing state for use in event listeners
+  const startedRef = useRef(false);
+  const startPromise = useRef<Promise<void> | null>(null);
 
   // Stable ref callbacks — one per stem, never recreated
   const circleRefs = useRef(
@@ -93,6 +98,28 @@ export default function StemPlayer() {
     if (stemsRef.current) gsap.from(stemsRef.current, { opacity: 0, y: 40, duration: 0.7, ease: "power3.out" });
     gsap.from(controlsRef.current, { opacity: 0, y: 40, duration: 0.7, ease: "power3.out", delay: 0.15 });
   }, { dependencies: [isOurSong, isHome] });
+
+  // Every time this song comes up on the homepage (first load or a switch via
+  // the logo): back to its defaults (just the mushroom) and playing. Sound
+  // starts right away if the visitor has already interacted with the page (a
+  // logo double-click counts); otherwise on their first tap/click/key anywhere,
+  // since browsers block audio before that.
+  useEffect(() => {
+    if (!isHome || !isOurSong) return;
+    setActive(new Set(DEFAULT_ACTIVE));
+    playingRef.current = true;
+    setIsPlaying(true);
+    setPlaying(true);
+    if (startedRef.current) return;
+    const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+    if (ua?.hasBeenActive) { startAudio(); return; }
+    const events = ["click", "touchend", "keydown"] as const;
+    const onFirst = () => { cleanup(); startAudio(); };
+    const cleanup = () => events.forEach((t) => document.removeEventListener(t, onFirst, true));
+    events.forEach((t) => document.addEventListener(t, onFirst, true));
+    return cleanup;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOurSong, isHome]);
 
   // Silence (without stopping) while another song is on the homepage, so the
   // loop stays in sync and comes straight back when switching to it.
@@ -190,7 +217,13 @@ export default function StemPlayer() {
     });
   }, [active, isOurSong, isHome]);
 
-  async function startAudio() {
+  // One start only, however many taps/listeners ask for it at once.
+  function startAudio(): Promise<void> {
+    if (!startPromise.current) startPromise.current = startAudioOnce();
+    return startPromise.current;
+  }
+
+  async function startAudioOnce() {
     setLoading(true);
     try {
       await Tone.start();
@@ -225,9 +258,11 @@ export default function StemPlayer() {
       );
       const startTime = Tone.now() + 0.1;
       stems.forEach(({ id }) => players.current[id].start(startTime));
+      startedRef.current = true;
       setStarted(true);
     } catch (e) {
       console.warn("Audio failed to start:", e);
+      startPromise.current = null; // allow a retry on the next tap
     } finally {
       setLoading(false);
     }

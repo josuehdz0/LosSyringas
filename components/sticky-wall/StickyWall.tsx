@@ -100,6 +100,12 @@ const CLUSTER: [number, 0 | 1, number][] = [
   [-0.5, 1, -0.02], // drums  — bottom left
   [-1, 0, 0.03],    // keys   — top left
 ];
+// Wall look. "white" = site-white wall with classic light-yellow notes
+// (experiment); "plaster" = the approved beige plaster with off-white notes.
+// Flip this to switch back. ?wall=plaster / ?wall=white overrides it, to compare.
+type WallTheme = "white" | "plaster";
+const WALL_THEME: WallTheme = "white";
+
 // Already on the wall when the page opens. They sound from the first tap.
 const START_ON_WALL = new Set(["keys", "bass"]);
 const CLUSTER_STEP_X = 1.12; // centre-to-centre, in note widths
@@ -138,6 +144,12 @@ export default function StickyWall() {
   const [loaded, setLoaded] = useState(false);
   const [hintGone, setHintGone] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [theme, setTheme] = useState<WallTheme>(WALL_THEME);
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("wall");
+    if (q === "white" || q === "plaster") setTheme(q);
+  }, []);
 
   // Per-note static look: outline, texture offsets, first resting jitter.
   const looks = useMemo(() => {
@@ -181,9 +193,9 @@ export default function StickyWall() {
     let bridge: HTMLAudioElement | null = null;
     const gains: Record<string, GainNode> = {};
     const sources: AudioBufferSourceNode[] = [];
-    let started = false;
+    let decoding = false;
 
-    // Fetch the stems right away; decoding waits for the first tap.
+    // Fetch the stems right away.
     const raw = Promise.all(STEMS.map((s) => fetch(s.file).then((r) => r.arrayBuffer())));
     raw.then(() => { if (!disposed) setLoaded(true); }).catch((e) => console.warn("Sueños stems failed to load:", e));
 
@@ -192,8 +204,12 @@ export default function StickyWall() {
       if (bridge) bridge.muted = mutedNow;
     }
 
-    // Must run inside the tap: the AudioContext and the bridge element both
-    // need a user gesture to start, iOS especially.
+    /* Autoplay: set everything up on page load and try to play straight
+       away. Browsers only allow that if the visitor has interacted with the
+       site before (or allowed auto-play); otherwise the context stays
+       suspended and the very first tap/click/key anywhere on the page
+       unlocks it (see unlock below). Stems are scheduled on the suspended
+       context, so they all begin together the moment it runs. */
     function ensureStarted() {
       if (!ctx) {
         const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -207,11 +223,14 @@ export default function StickyWall() {
         bridge = new Audio();
         bridge.srcObject = dest.stream;
         bridge.muted = mutedNow;
-        bridge.play().catch(() => {});
+        ctx.addEventListener("statechange", () => {
+          if (ctx?.state === "running" && !disposed) setHintGone(true);
+        });
       }
+      bridge?.play().catch(() => {});
       if (ctx.state !== "running") ctx.resume().catch(() => {});
-      if (started) return;
-      started = true;
+      if (decoding) return;
+      decoding = true;
       const c = ctx;
       raw.then(async (bufs) => {
         const decoded = await Promise.all(bufs.map((b) => c.decodeAudioData(b)));
@@ -468,11 +487,18 @@ export default function StickyWall() {
 
     // Browsers only allow sound after a tap, so the first tap anywhere on the
     // wall starts it (with keys + bass already up, that's the first thing heard).
-    function onFirstTap() {
+    // Try now; if the browser says no, the first interaction anywhere does it.
+    ensureStarted();
+    const unlockEvents = ["click", "touchend", "keydown"] as const;
+    function unlock() {
       ensureStarted();
-      setHintGone(true);
+      if (ctx?.state === "running") removeUnlock();
+      else ctx?.resume().then(removeUnlock).catch(() => {});
     }
-    stage.addEventListener("click", onFirstTap);
+    function removeUnlock() {
+      unlockEvents.forEach((t) => document.removeEventListener(t, unlock, true));
+    }
+    unlockEvents.forEach((t) => document.addEventListener(t, unlock, true));
 
     window.addEventListener("resize", layout);
     layout();
@@ -482,7 +508,7 @@ export default function StickyWall() {
     return () => {
       disposed = true;
       window.removeEventListener("resize", layout);
-      stage.removeEventListener("click", onFirstTap);
+      removeUnlock();
       window.removeEventListener("muteChange", onMuteChange);
       document.removeEventListener("visibilitychange", onVisibility);
       notes.forEach((n, i) => {
@@ -505,7 +531,7 @@ export default function StickyWall() {
   }, []);
 
   return (
-    <div ref={stageRef} className="sticky-wall" style={{ visibility: ready ? "visible" : "hidden" }}>
+    <div ref={stageRef} className={`sticky-wall theme-${theme}`} style={{ visibility: ready ? "visible" : "hidden" }}>
       <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden>
         <defs>
           {looks.map((l, i) => (
@@ -525,7 +551,7 @@ export default function StickyWall() {
           <p className="sub">Indie Surf Rock Band · Boise, ID</p>
         </div>
         <p className={`hint${hintGone ? " gone" : ""}`}>
-          {loaded ? "tap anywhere to play · tap a note to stick it up" : "loading the stems…"}
+          {loaded ? "tap anywhere to play" : "loading the stems…"}
         </p>
       </div>
 
