@@ -23,7 +23,7 @@
   user-select: none;
 }
 @media (max-width: 600px) {
-  .sticky-wall { --note: 84px; --desk-h: 170px; }
+  .sticky-wall { --note: clamp(96px, 28vw, 124px); --desk-h: 180px; }
 }
 
 /* Plaster: a fine speckle over a slow mottle, lit from above. */

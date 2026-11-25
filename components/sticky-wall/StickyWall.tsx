@@ -89,11 +89,18 @@ function shapePath(s: StemDef, r: (a: number, b: number) => number) {
   return d;
 }
 
-// Each note has its own spot on the wall, so placements never pile up.
-// [x across the screen, y down the wall band]. Three go above the band name
-// and two below, so "Los Syringas" stays readable in the middle.
-const WIDE_SLOTS = [[0.2, 0.02], [0.5, 0], [0.8, 0.04], [0.33, 1], [0.67, 0.96]];
-const NARROW_SLOTS = [[0.2, 0.02], [0.5, 0], [0.8, 0.04], [0.3, 1], [0.7, 0.96]];
+// Where each note goes on the wall: a tight cluster around the band name,
+// three just above it and two just below. [column in note-widths from the
+// centre, row (0 above / 1 below), small vertical nudge in note-heights].
+const CLUSTER: [number, 0 | 1, number][] = [
+  [-1, 0, 0.03],   // josué
+  [0, 0, -0.05],   // pearson
+  [1, 0, 0.05],    // bass
+  [-0.5, 1, -0.02], // drums
+  [0.5, 1, 0.04],  // keys
+];
+const CLUSTER_STEP_X = 1.12; // centre-to-centre, in note widths
+const CLUSTER_GAP_Y = 0.14;  // space between a row and the band name, in note heights
 // Top of the wall band, just under the controls (matches --wall-top in CSS).
 const WALL_TOP = 120;
 
@@ -121,6 +128,7 @@ interface NoteState {
 export default function StickyWall() {
   const stageRef = useRef<HTMLDivElement>(null);
   const deskRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLDivElement>(null);
   const noteRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const actions = useRef<{ all: () => void; clear: () => void; toggleMute: () => void }>();
   const [ready, setReady] = useState(false);
@@ -142,6 +150,7 @@ export default function StickyWall() {
   useEffect(() => {
     const stage = stageRef.current!;
     const desk = deskRef.current!;
+    const title = titleRef.current!;
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     let disposed = false;
     const rafs = new Set<number>();
@@ -283,12 +292,18 @@ export default function StickyWall() {
     }
 
     function wallPose(n: NoteState, m: M): Pose {
-      const [sx, sy] = (m.narrow ? NARROW_SLOTS : WIDE_SLOTS)[n.i];
-      const top = WALL_TOP;
-      const bottom = m.deskTop - 24;
-      const usable = Math.max(bottom - top, m.size);
-      const x = sx * m.W + n.wallJ.x * m.size;
-      const y = top + sy * (usable - m.size) + m.size / 2 + n.wallJ.y * m.size;
+      const [col, row, dy] = CLUSTER[n.i];
+      // Measure the band name + tagline where they actually are on screen.
+      const sr = stage.getBoundingClientRect();
+      const tr = title.getBoundingClientRect();
+      const half = m.size / 2;
+      const x = m.W / 2 + col * m.size * CLUSTER_STEP_X + n.wallJ.x * m.size;
+      let y = row === 0
+        ? tr.top - sr.top - m.size * CLUSTER_GAP_Y - half
+        : tr.bottom - sr.top + m.size * CLUSTER_GAP_Y + half;
+      y += (dy + n.wallJ.y) * m.size;
+      // On short screens, stay between the controls and the resting notes.
+      y = Math.min(m.deskTop - 12 - half, Math.max(WALL_TOP + half, y));
       return { x, y, r: n.wallJ.r, k: 1 };
     }
 
@@ -356,7 +371,7 @@ export default function StickyWall() {
     function stick(n: NoteState) {
       const m = metrics();
       const from = n.pos ?? deskPose(n, m);
-      n.wallJ = { x: rnd(-0.08, 0.08), y: rnd(-0.08, 0.08), r: rnd(-3, 3) };
+      n.wallJ = { x: rnd(-0.04, 0.04), y: rnd(-0.04, 0.04), r: rnd(-3, 3) };
       n.onWall = true;
       const to = wallPose(n, m);
       n.el.style.zIndex = String(++zTop);
@@ -493,8 +508,10 @@ export default function StickyWall() {
       <div ref={deskRef} className="desk" />
 
       <div className="center">
-        <h1>Los Syringas</h1>
-        <p className="sub">Indie Surf Rock Band · Boise, ID</p>
+        <div ref={titleRef}>
+          <h1>Los Syringas</h1>
+          <p className="sub">Indie Surf Rock Band · Boise, ID</p>
+        </div>
         <p className={`hint${hintGone ? " gone" : ""}`}>
           {loaded ? "tap a note to stick it on the wall" : "loading the stems…"}
         </p>
