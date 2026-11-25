@@ -8,9 +8,15 @@ interface Release {
   spotify?: string | null;
   appleMusic?: string | null;
   youtube?: string | null;
+  /** Unreleased: a pre-save link shown instead of the platform icons. */
+  presave?: string;
 }
 
 const releases: Release[] = [
+  {
+    title: "Sueños",
+    presave: "https://show.co/HxN74Zo",
+  },
   {
     title: "This Song Is Not For You",
     spotify: "https://open.spotify.com/track/6V2FdnOp4Wo7TSBJjubQ3a?si=6ebe1ccc6d3d4e28",
@@ -22,12 +28,6 @@ const releases: Release[] = [
     spotify: "https://open.spotify.com/track/0SSKZPMt8nG26k7v71NtPi",
     appleMusic: "https://music.apple.com/us/album/fish/1735090271?i=1735090275",
     youtube: "https://www.youtube.com/watch?v=tdUMYQFQ37k",
-  },
-  {
-    title: "Right Now",
-    spotify: "https://open.spotify.com/track/0Y5G1A6RWa7LDL6qaVHTix",
-    appleMusic: "https://music.apple.com/us/album/right-now/1631729227?i=1631729228",
-    youtube: "https://www.youtube.com/watch?v=jPnfuf61OK8",
   },
   {
     title: "Satellite",
@@ -59,7 +59,7 @@ export default function Music() {
                 Releases
               </h2>
               <div className="flex flex-col gap-3">
-                {releases.map(({ title, label, spotify, appleMusic, youtube }) => {
+                {releases.map(({ title, label, spotify, appleMusic, youtube, presave }) => {
                   const hasLinks = spotify || appleMusic || youtube;
                   return (
                     <div
@@ -73,6 +73,16 @@ export default function Music() {
                         <span className="flex-shrink-0 text-xs font-semibold uppercase tracking-wide px-2.5 py-1 bg-[var(--yellow)] text-[var(--black)] rounded-full ml-3">
                           {label}
                         </span>
+                      )}
+                      {presave && (
+                        <a
+                          href={presave}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-shrink-0 ml-3 text-xs font-semibold uppercase tracking-wide px-3 py-1.5 bg-[var(--yellow)] text-[var(--black)] rounded-full hover:opacity-80 transition-opacity"
+                        >
+                          Pre-save
+                        </a>
                       )}
                       {hasLinks && (
                         <div className="flex items-center gap-5 ml-3 flex-shrink-0">
