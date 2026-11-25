@@ -150,6 +150,7 @@ interface NoteState {
   pos: Pose | null;
   hov: number;        // 0..1 hover progress
   hovTarget: number;  // 0 or 1
+  mouseOver: boolean; // a real mouse pointer is over the paper (never set by touch)
   hovRaf: number;
 }
 
@@ -202,7 +203,7 @@ export default function StickyWall() {
       // the visitor's own picks when coming back from another page).
       onWall: playingNow.has(s.id), busy: false, sounding: playingNow.has(s.id),
       deskJ: looks[i].deskJ, wallJ: looks[i].wallJ, pos: null,
-      hov: 0, hovTarget: 0, hovRaf: 0,
+      hov: 0, hovTarget: 0, hovRaf: 0, mouseOver: false,
     }));
 
     /* ---------- Audio ----------
@@ -316,6 +317,8 @@ export default function StickyWall() {
       const h0 = ease(n.hov) * HOVER_H;
       cancelHover(n);
       n.hov = 0;
+      // Forget any wave lift; only a real mouse keeps it lifted after landing.
+      n.hovTarget = n.mouseOver ? 1 : 0;
       const finish = () => {
         el.style.transform = tf(to, m);
         pose(n, lf[1], 0);
@@ -323,7 +326,9 @@ export default function StickyWall() {
         if (onPress && !pressed) onPress();
         onDone?.();
         // Still under the cursor after landing? Lift again.
-        if (n.hovTarget && el.matches(":hover")) hoverTo(n, 1);
+        // Still under the mouse after landing? Lift again. (Not :hover — phones
+        // keep :hover on the last tapped element, which left notes stuck lifted.)
+        if (n.mouseOver) hoverTo(n, 1);
       };
       if (reduce) { finish(); return; }
       n.busy = true;
@@ -425,8 +430,8 @@ export default function StickyWall() {
 
     const handlers = notes.map((n) => {
       const click = () => toggle(n);
-      const enter = (e: PointerEvent) => { if (e.pointerType === "mouse") hoverTo(n, 1); };
-      const leave = (e: PointerEvent) => { if (e.pointerType === "mouse") hoverTo(n, 0); };
+      const enter = (e: PointerEvent) => { if (e.pointerType === "mouse") { n.mouseOver = true; hoverTo(n, 1); } };
+      const leave = (e: PointerEvent) => { if (e.pointerType === "mouse") { n.mouseOver = false; hoverTo(n, 0); } };
       n.el.addEventListener("click", click);
       n.el.addEventListener("pointerenter", enter);
       n.el.addEventListener("pointerleave", leave);
@@ -454,7 +459,7 @@ export default function StickyWall() {
           const start = delay + k * WAVE_STAGGER;
           later(() => { if (!n.busy && !n.hovTarget) hoverTo(n, 1, WAVE_UP_MS); }, start);
           later(() => {
-            if (!n.busy && !n.el.matches(":hover")) hoverTo(n, 0, WAVE_DOWN_MS);
+            if (!n.busy && !n.mouseOver) hoverTo(n, 0, WAVE_DOWN_MS);
           }, start + WAVE_UP_MS + WAVE_HOLD);
         });
     }
