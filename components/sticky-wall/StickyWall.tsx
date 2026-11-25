@@ -114,8 +114,8 @@ const PEEK: Record<string, { side: "left" | "right" | "bottom"; at: number; r: n
   keys:    { side: "left",   at: 0.6,  r: 12 },
   josue:   { side: "left",   at: 0.83, r: -8 },
   drums:   { side: "bottom", at: 0.5,  r: 5 },
-  pearson: { side: "right",  at: 0.64, r: -11 },
-  bass:    { side: "right",  at: 0.86, r: 9 },
+  bass:    { side: "right",  at: 0.64, r: -11 },
+  pearson: { side: "right",  at: 0.86, r: 9 },
 };
 const PEEK_VISIBLE = 0.45; // share of the note showing on screen
 const PEEK_SCALE = 1;
