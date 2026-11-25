@@ -7,6 +7,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { Volume2, VolumeX } from "lucide-react";
 import Logo from "./Logo";
+import { useCurrentSong } from "@/lib/currentSong";
 
 const links = [
   { href: "/", label: "Home" },
@@ -26,7 +27,9 @@ export default function Nav() {
   const isHome = pathname === "/";
   // Pages with a full-bleed hero photo — nav should be white text when not scrolled
   const hasHero = pathname === "/music";
-  const useWhiteText = isHome || (hasHero && !scrolled);
+  // The Sueños sticky wall is light beige, so the nav goes dark there.
+  const onWall = isHome && useCurrentSong() === "suenos";
+  const useWhiteText = (isHome && !onWall) || (hasHero && !scrolled);
 
   useGSAP(() => {
     if (!visible) return;
@@ -38,26 +41,8 @@ export default function Nav() {
     });
   }, { dependencies: [visible] });
 
-  useEffect(() => {
-    if (!isHome) { setVisible(true); return; }
-    function onEntered() {
-      setVisible(true);
-      const isMobile = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-      if (isMobile && muteButtonRef.current) {
-        setTimeout(() => {
-          gsap.timeline()
-            .to(muteButtonRef.current, { scale: 1.4, duration: 0.2, ease: "power2.out" })
-            .to(muteButtonRef.current, { scale: 1, duration: 0.3, ease: "elastic.out(1, 0.4)" })
-            .to(muteButtonRef.current, { scale: 1.4, duration: 0.2, ease: "power2.out", delay: 0.2 })
-            .to(muteButtonRef.current, { scale: 1, duration: 0.3, ease: "elastic.out(1, 0.4)" })
-            .to(muteButtonRef.current, { scale: 1.4, duration: 0.2, ease: "power2.out", delay: 0.2 })
-            .to(muteButtonRef.current, { scale: 1, duration: 0.3, ease: "elastic.out(1, 0.4)" });
-        }, 800);
-      }
-    }
-    window.addEventListener("splashEntered", onEntered);
-    return () => window.removeEventListener("splashEntered", onEntered);
-  }, [isHome]);
+  // No splash anymore: slide the nav in on first mount.
+  useEffect(() => { setVisible(true); }, []);
 
   useEffect(() => {
     function onScroll() { setScrolled(window.scrollY > 16); }

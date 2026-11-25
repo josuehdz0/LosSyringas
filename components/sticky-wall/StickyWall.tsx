@@ -1,0 +1,497 @@
+"use client";
+
+import "./sticky-wall.css";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getIsMuted } from "@/lib/audioAnalysers";
+import { songs, neighborSong, type SongId } from "@/lib/songs";
+
+/* Ported from docs/suenos-sticky-wall/prototype/index.html. The look and
+   motion numbers are the approved ones in sticky-notes-final-rendering.md;
+   change them there first. */
+
+interface StemDef {
+  id: string;
+  who: string;
+  what: string;
+  file: string;
+  c: string;   // paper colour
+  k: number;   // how far the free end stands off the wall
+  tw: number;  // twist: which bottom corner stands further off (+ right, - left)
+  top?: "r" | "l"; // a top corner that hasn't fully stuck
+  tl?: number;     // ...and how much
+  ay?: string;     // drawing nudged up/down on the note
+}
+
+const STEMS: StemDef[] = [
+  { id: "josue",   who: "josué",   what: "guitar", file: "/stems/suenos/josue-guitar.mp3",   c: "#ebe9e2", k: 1.0,  tw: 0.3,  top: "r", tl: 1 },
+  { id: "pearson", who: "pearson", what: "guitar", file: "/stems/suenos/pearson-guitar.mp3", c: "#eceae3", k: 1.35, tw: -0.5, ay: "-10%" },
+  { id: "bass",    who: "shawn",   what: "bass",   file: "/stems/suenos/bass.mp3",           c: "#eae8e1", k: 1.1,  tw: 0.15, top: "l", tl: 0.6 },
+  { id: "drums",   who: "luke",    what: "drums",  file: "/stems/suenos/drums.mp3",          c: "#ecebe4", k: 0.85, tw: -0.2 },
+  { id: "keys",    who: "josh",    what: "keys",   file: "/stems/suenos/keys.mp3",           c: "#ebe8e1", k: 1.4,  tw: 0.55 },
+];
+
+// ── Motion constants ───────────────────────────────────────────────────────
+const STICK_MS = 580;
+const PEEL_MS = 500;
+const LIFT_SCALE = 0.06; // how much bigger it looks at the top of the hold
+const LIFT_RISE = 0.05;  // how far up the path bows, as a share of note size
+const travel = (t: number) => t * t * t * (10 + t * (-15 + 6 * t)); // minimum-jerk
+const hold = (t: number) => Math.pow(Math.max(0, Math.sin(Math.PI * Math.pow(t, 0.75))), 1.15);
+const lerp = (a: number, b: number, s: number) => a + (b - a) * s;
+const rnd = (a: number, b: number) => a + Math.random() * (b - a);
+
+// Seeded random so the server render and the first client render agree.
+function seeded(seed: number) {
+  let a = seed >>> 0;
+  return (lo: number, hi: number) => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    const r = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return lo + r * (hi - lo);
+  };
+}
+
+/* ---------- Shadows ----------
+   One light, from the upper right. A point standing z off the wall throws
+   its shadow (LX*z, LY*z) away from itself; depth grows down the note and
+   twist across it, so the whole shadow is one 2D matrix. */
+const LX = -0.42, LY = 1;
+function shadowMatrix(depth: number, twist: number, widen: number) {
+  const a = (1 + widen) * (1 + LX * twist);
+  const b = LY * twist;
+  const c = (1 + widen) * LX * depth;
+  const d = 1 + LY * depth;
+  return `matrix(${a.toFixed(4)}, ${b.toFixed(4)}, ${c.toFixed(4)}, ${d.toFixed(4)}, 0, 0)`;
+}
+
+/* ---------- Note outlines ----------
+   0..1 box units. Straight bottom, sides flare a hair toward the bottom with
+   a slight S, faintest arch on top; a lifted top corner sits out and down. */
+function shapePath(s: StemDef, r: (a: number, b: number) => number) {
+  const f = (v: number) => v.toFixed(4);
+  const aL = 0.004 + 0.006 * s.k * (1 + Math.max(0, -s.tw) * 1.2) + r(0, 0.003);
+  const aR = 0.004 + 0.006 * s.k * (1 + Math.max(0, s.tw) * 1.2) + r(0, 0.003);
+  const tc = r(0.002, 0.006);
+  const tR = s.top === "r" ? s.tl ?? 0 : 0;
+  const tL = s.top === "l" ? s.tl ?? 0 : 0;
+  const xr0 = 1 - aR + tR * 0.01, yr0 = tc + tR * 0.006;
+  const xl0 = aL - tL * 0.01, yl0 = tc + tL * 0.006;
+  const xrm = 1 - aR * 0.6 + r(-0.003, 0.002);
+  const xlm = aL * 0.6 - r(-0.003, 0.002);
+  let d = `M${f(xl0)},${f(yl0)} `;
+  d += `C0.35,0 0.65,0 ${f(xr0)},${f(yr0)} `;
+  d += `C${f(xr0 + tR * 0.006)},0.14 ${f(xrm)},0.3 ${f(xrm)},0.5 `;
+  d += `C${f(xrm)},0.7 1,0.8 1,1 `;
+  d += `L0,1 `;
+  d += `C0,0.8 ${f(xlm)},0.7 ${f(xlm)},0.5 `;
+  d += `C${f(xlm)},0.3 ${f(xl0 - tL * 0.006)},0.14 ${f(xl0)},${f(yl0)} Z`;
+  return d;
+}
+
+// Each note has its own spot on the wall, so placements never pile up.
+const WIDE_SLOTS = [[0.15, 0.3], [0.32, 0.78], [0.5, 0.18], [0.68, 0.72], [0.85, 0.28]];
+const NARROW_SLOTS = [[0.3, 0.2], [0.7, 0.3], [0.3, 0.52], [0.7, 0.62], [0.5, 0.86]];
+
+interface Pose { x: number; y: number; r: number; k: number }
+interface Jitter { x: number; y: number; r: number }
+interface NoteState {
+  s: StemDef;
+  el: HTMLButtonElement;
+  i: number;
+  onWall: boolean;
+  busy: boolean;
+  sounding: boolean;
+  deskJ: Jitter;
+  wallJ: Jitter;
+  pos: Pose | null;
+}
+
+export default function StickyWall({ songId, onSwitch }: { songId: SongId; onSwitch: (id: SongId) => void }) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const deskRef = useRef<HTMLDivElement>(null);
+  const noteRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const actions = useRef<{ all: () => void; clear: () => void; toggleMute: () => void }>();
+  const [ready, setReady] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [hintGone, setHintGone] = useState(false);
+  const [muted, setMuted] = useState(false);
+
+  const songIndex = songs.findIndex((s) => s.id === songId);
+  const song = songs[songIndex];
+
+  // Per-note static look: outline, texture offsets, first resting jitter.
+  const looks = useMemo(() => {
+    const r = seeded(20261125);
+    return STEMS.map((s) => ({
+      path: shapePath(s, r),
+      cx: `${Math.round(r(0, 520))}px`,
+      cy: `${Math.round(r(0, 520))}px`,
+      deskJ: { x: r(-0.25, 0.25), y: r(-0.22, 0.22), r: r(-16, 16) },
+    }));
+  }, []);
+
+  useEffect(() => {
+    const stage = stageRef.current!;
+    const desk = deskRef.current!;
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let disposed = false;
+    const rafs = new Set<number>();
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const later = (fn: () => void, ms: number) => {
+      const t = setTimeout(() => { timers.delete(t); fn(); }, ms);
+      timers.add(t);
+    };
+
+    const notes: NoteState[] = STEMS.map((s, i) => ({
+      s, i, el: noteRefs.current[i]!,
+      onWall: false, busy: false, sounding: false,
+      deskJ: looks[i].deskJ, wallJ: { x: 0, y: 0, r: 0 }, pos: null,
+    }));
+
+    /* ---------- Audio ----------
+       All stems start at the same instant, looped, each through its own
+       GainNode; sticking a note only ramps its gain, so they never drift. */
+    let mutedNow = getIsMuted();
+    setMuted(mutedNow);
+    let ctx: AudioContext | null = null;
+    let master: GainNode | null = null;
+    let bridge: HTMLAudioElement | null = null;
+    const gains: Record<string, GainNode> = {};
+    const sources: AudioBufferSourceNode[] = [];
+    let started = false;
+
+    // Fetch the stems right away; decoding waits for the first tap.
+    const raw = Promise.all(STEMS.map((s) => fetch(s.file).then((r) => r.arrayBuffer())));
+    raw.then(() => { if (!disposed) setLoaded(true); }).catch((e) => console.warn("Sueños stems failed to load:", e));
+
+    function applyMute() {
+      if (master && ctx) master.gain.setTargetAtTime(mutedNow ? 0 : 1, ctx.currentTime, 0.05);
+      if (bridge) bridge.muted = mutedNow;
+    }
+
+    // Must run inside the tap: the AudioContext and the bridge element both
+    // need a user gesture to start, iOS especially.
+    function ensureStarted() {
+      if (!ctx) {
+        const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        ctx = new AC();
+        master = ctx.createGain();
+        master.gain.value = mutedNow ? 0 : 1;
+        // Route through an <audio> element so iOS plays it with the silent
+        // switch on (media session instead of the ringer), same as StemPlayer.
+        const dest = ctx.createMediaStreamDestination();
+        master.connect(dest);
+        bridge = new Audio();
+        bridge.srcObject = dest.stream;
+        bridge.muted = mutedNow;
+        bridge.play().catch(() => {});
+      }
+      if (ctx.state !== "running") ctx.resume().catch(() => {});
+      if (started) return;
+      started = true;
+      const c = ctx;
+      raw.then(async (bufs) => {
+        const decoded = await Promise.all(bufs.map((b) => c.decodeAudioData(b)));
+        if (disposed) return;
+        const t0 = c.currentTime + 0.08;
+        STEMS.forEach((s, i) => {
+          const g = c.createGain();
+          g.gain.value = 0;
+          g.connect(master!);
+          gains[s.id] = g;
+          const src = c.createBufferSource();
+          src.buffer = decoded[i];
+          src.loop = true;
+          src.connect(g);
+          src.start(t0);
+          sources.push(src);
+        });
+        for (const n of notes) setStem(n, n.sounding);
+      }).catch((e) => console.warn("Sueños audio failed to start:", e));
+    }
+
+    // n.sounding: should the stem be heard (only once pressed to the wall).
+    function setStem(n: NoteState, on: boolean) {
+      n.sounding = on;
+      const g = gains[n.s.id];
+      if (!g || !ctx) return;
+      const now = ctx.currentTime;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setTargetAtTime(on ? 1 : 0, now, on ? 0.09 : 0.14);
+    }
+
+    // Hidden: mute the bridge (don't pause — restarting it needs a gesture
+    // on iOS) and suspend the context. Visible: give iOS a beat, then resume.
+    function onVisibility() {
+      if (!ctx) return;
+      if (document.hidden) {
+        if (bridge) bridge.muted = true;
+        ctx.suspend().catch(() => {});
+      } else {
+        later(() => {
+          ctx?.resume().then(() => { if (bridge) bridge.muted = mutedNow; }).catch(() => {});
+        }, 200);
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+
+    // Global mute (Nav on mobile, our own button) stays in sync via StemPlayer.
+    function onMuteChange(e: Event) {
+      mutedNow = (e as CustomEvent<{ muted: boolean }>).detail.muted;
+      setMuted(mutedNow);
+      applyMute();
+    }
+    window.addEventListener("muteChange", onMuteChange);
+
+    /* ---------- Shadows / pose ---------- */
+    function pose(n: NoteState, lf: number, h: number) {
+      const lift = n.s.k * lf, flat = 1 - h;
+      const st = n.el.style;
+      st.setProperty("--lf", lf.toFixed(3));
+      st.setProperty("--h", h.toFixed(3));
+      st.setProperty("--mh", shadowMatrix(lift * 0.11 * flat, n.s.tw * lift * 0.1 * flat, lift * 0.012));
+      st.setProperty("--ms", shadowMatrix(lift * 0.15 * flat, n.s.tw * lift * 0.13 * flat, lift * 0.025));
+    }
+
+    /* ---------- Layout ---------- */
+    function metrics() {
+      const W = stage.clientWidth, H = stage.clientHeight;
+      const size = notes[0].el.offsetWidth;
+      const deskH = desk.offsetHeight;
+      return { W, H, size, deskTop: H - deskH, deskH, narrow: W < 600 };
+    }
+    type M = ReturnType<typeof metrics>;
+
+    function deskPose(n: NoteState, m: M): Pose {
+      const slotW = m.W / notes.length;
+      const deskScale = m.narrow ? 0.82 : 0.86;
+      const half = (m.size * deskScale) / 2 + 8;
+      const rawX = slotW * (n.i + 0.5) + n.deskJ.x * Math.min(slotW, m.size) * 0.6;
+      const x = Math.min(m.W - half, Math.max(half, rawX));
+      const y = m.deskTop + m.deskH * 0.52 + n.deskJ.y * m.deskH * 0.5;
+      return { x, y, r: n.deskJ.r, k: deskScale };
+    }
+
+    function wallPose(n: NoteState, m: M): Pose {
+      const [sx, sy] = (m.narrow ? NARROW_SLOTS : WIDE_SLOTS)[n.i];
+      // Below the site nav + the switcher header.
+      const top = m.narrow ? 200 : 160;
+      const bottom = m.deskTop - 24;
+      const usable = Math.max(bottom - top, m.size);
+      const x = sx * m.W + n.wallJ.x * m.size;
+      const y = top + sy * (usable - m.size) + m.size / 2 + n.wallJ.y * m.size;
+      return { x, y, r: n.wallJ.r, k: 1 };
+    }
+
+    const tf = (p: Pose, m: M, extraK = 1) =>
+      `translate(${p.x - m.size / 2}px, ${p.y - m.size / 2}px) rotate(${p.r}deg) scale(${p.k * extraK})`;
+
+    function place(n: NoteState, m: M) {
+      n.pos = n.onWall ? wallPose(n, m) : deskPose(n, m);
+      n.el.style.transform = tf(n.pos, m);
+      pose(n, n.onWall ? 1 : 0.35, 0);
+    }
+    function layout() {
+      const m = metrics();
+      notes.forEach((n) => { if (!n.busy) place(n, m); });
+    }
+
+    /* ---------- Motion ----------
+       One continuous gesture driven by a single progress t: travel follows
+       a minimum-jerk curve, hold is one smooth bump that drives scale, a
+       slight rise, and the shadow. */
+    let zTop = 20;
+
+    function move(
+      n: NoteState, m: M, from: Pose, to: Pose, ms: number,
+      { lf, onPress, onDone }: { lf: [number, number]; onPress?: () => void; onDone?: () => void },
+    ) {
+      const el = n.el;
+      let pressed = false;
+      const finish = () => {
+        el.style.transform = tf(to, m);
+        pose(n, lf[1], 0);
+        n.busy = false;
+        if (onPress && !pressed) onPress();
+        onDone?.();
+      };
+      if (reduce) { finish(); return; }
+      n.busy = true;
+      const t0 = performance.now();
+      const frame = (now: number) => {
+        rafs.delete(id);
+        if (disposed) return;
+        const t = Math.min(1, (now - t0) / ms);
+        const s = travel(t);
+        const h = t < 1 ? hold(t) : 0;
+        el.style.transform = tf({
+          x: lerp(from.x, to.x, s),
+          y: lerp(from.y, to.y, s) - h * m.size * LIFT_RISE,
+          r: lerp(from.r, to.r, s),
+          k: lerp(from.k, to.k, s) * (1 + h * LIFT_SCALE),
+        }, m);
+        pose(n, lerp(lf[0], lf[1], s), h);
+        if (onPress && !pressed && t > 0.82) { pressed = true; onPress(); }
+        if (t < 1) { id = requestAnimationFrame(frame); rafs.add(id); } else finish();
+      };
+      let id = requestAnimationFrame(frame);
+      rafs.add(id);
+    }
+
+    function stick(n: NoteState) {
+      const m = metrics();
+      const from = n.pos ?? deskPose(n, m);
+      n.wallJ = { x: rnd(-0.08, 0.08), y: rnd(-0.08, 0.08), r: rnd(-3, 3) };
+      n.onWall = true;
+      const to = wallPose(n, m);
+      n.el.style.zIndex = String(++zTop);
+      setHintGone(true);
+      label(n);
+      // The stem comes in as the note meets the wall, not when it leaves.
+      move(n, m, from, to, STICK_MS, { lf: [0.35, 1], onPress: () => setStem(n, true) });
+      n.pos = to;
+    }
+
+    function peel(n: NoteState) {
+      const m = metrics();
+      const from = n.pos ?? wallPose(n, m);
+      n.onWall = false;
+      n.deskJ = { x: rnd(-0.25, 0.25), y: rnd(-0.22, 0.22), r: rnd(-16, 16) };
+      const to = deskPose(n, m);
+      setStem(n, false);
+      label(n);
+      move(n, m, from, to, PEEL_MS, { lf: [1, 0.35], onDone: () => { n.el.style.zIndex = String(10 + n.i); } });
+      n.pos = to;
+    }
+
+    function label(n: NoteState) {
+      n.el.setAttribute("aria-pressed", String(n.onWall));
+      n.el.setAttribute("aria-label", `${n.s.who}, ${n.s.what}: ${n.onWall ? "on the wall, playing" : "off the wall"}`);
+    }
+
+    function toggle(n: NoteState) {
+      if (n.busy) return;
+      ensureStarted();
+      if (n.onWall) peel(n); else stick(n);
+    }
+
+    const clickHandlers = notes.map((n) => {
+      const h = () => toggle(n);
+      n.el.addEventListener("click", h);
+      label(n);
+      return h;
+    });
+
+    actions.current = {
+      all: () => {
+        ensureStarted();
+        notes.filter((n) => !n.onWall).forEach((n, k) => later(() => stick(n), k * 110));
+      },
+      clear: () => {
+        notes.filter((n) => n.onWall).forEach((n, k) => later(() => peel(n), k * 90));
+      },
+      toggleMute: () => {
+        window.dispatchEvent(new CustomEvent("muteToggle", { detail: { muted: !mutedNow } }));
+      },
+    };
+
+    window.addEventListener("resize", layout);
+    layout();
+    setReady(true);
+    document.fonts?.ready.then(() => { if (!disposed) layout(); });
+
+    return () => {
+      disposed = true;
+      window.removeEventListener("resize", layout);
+      window.removeEventListener("muteChange", onMuteChange);
+      document.removeEventListener("visibilitychange", onVisibility);
+      notes.forEach((n, i) => n.el.removeEventListener("click", clickHandlers[i]));
+      rafs.forEach((id) => cancelAnimationFrame(id));
+      timers.forEach((t) => clearTimeout(t));
+      sources.forEach((s) => { try { s.stop(); } catch { /* not started */ } });
+      if (bridge) { bridge.pause(); bridge.srcObject = null; }
+      ctx?.close().catch(() => {});
+    };
+  }, [looks]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  return (
+    <div ref={stageRef} className="sticky-wall" style={{ visibility: ready ? "visible" : "hidden" }}>
+      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden>
+        <defs>
+          {looks.map((l, i) => (
+            <clipPath key={i} id={`sw-shape-${i}`} clipPathUnits="objectBoundingBox">
+              <path d={l.path} />
+            </clipPath>
+          ))}
+        </defs>
+      </svg>
+
+      <div className="wall" />
+      <div ref={deskRef} className="desk" />
+
+      <header className="top">
+        <div className="switcher">
+          <button className="arrow" aria-label="Previous song" onClick={() => onSwitch(neighborSong(songId, -1))}>‹</button>
+          <div>
+            <h1>{song.title}</h1>
+            <small>{song.sub} · {songIndex + 1} of {songs.length}</small>
+          </div>
+          <button className="arrow" aria-label="Next song" onClick={() => onSwitch(neighborSong(songId, 1))}>›</button>
+        </div>
+        <div className="controls">
+          <button onClick={() => actions.current?.all()}>stick &apos;em all</button>
+          <button onClick={() => actions.current?.clear()}>clear wall</button>
+          <button className="mute" onClick={() => actions.current?.toggleMute()}>{muted ? "sound on" : "mute"}</button>
+        </div>
+      </header>
+
+      <div className={`hint${hintGone ? " gone" : ""}`}>
+        {loaded ? "tap a note to stick it on the wall" : "loading the stems…"}
+      </div>
+
+      {STEMS.map((s, i) => (
+        <button
+          key={s.id}
+          ref={(el) => { noteRefs.current[i] = el; }}
+          className={`note${loaded ? "" : " loading"}`}
+          data-top={s.top}
+          aria-pressed={false}
+          aria-label={`${s.who}, ${s.what}: off the wall`}
+          style={{
+            "--c": s.c,
+            "--shape": `url(#sw-shape-${i})`,
+            "--tw": s.tw,
+            "--k": s.k,
+            "--cx": looks[i].cx,
+            "--cy": looks[i].cy,
+            ...(s.ay ? { "--ay": s.ay } : {}),
+            ...(s.tl ? { "--tl": s.tl } : {}),
+          } as React.CSSProperties}
+        >
+          <div className="body">
+            <div className="sh sh-soft"><i /></div>
+            <div className="sh sh-hard"><i /></div>
+            <div className="paper">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="art" src={`/drawings/suenos/${s.id}.png`} alt="" draggable={false} />
+              <div className="mottle" />
+              <div className="fiber" />
+              <div className="crinkle" />
+              <div className="tooth" />
+              <div className="bend" />
+              <div className="topcurl" />
+            </div>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}

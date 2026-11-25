@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import SplashScreen from "./SplashScreen";
+import { songs, neighborSong, type SongId } from "@/lib/songs";
 import { stemAnalysers, getActiveStemIds, getIsMuted, getIsPlaying } from "@/lib/audioAnalysers";
 
 const FADE_DURATION = 1.0;
@@ -28,14 +28,10 @@ const CANVAS_H = STEM_IDS.length * LANE_H + (STEM_IDS.length - 1) * LANE_GAP; //
 const AMP_PX = LANE_H + LANE_GAP * 0.6;
 const SMOOTH_ALPHA = 0.18;
 
-let sessionEntered = false;
-
-export default function HeroSection() {
-  const [splashDone, setSplashDone] = useState(sessionEntered);
-  const isReturn = useRef(sessionEntered);
+export default function HeroSection({ songId, onSwitch }: { songId: SongId; onSwitch: (id: SongId) => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const h1Ref = useRef<HTMLHeadingElement>(null);
-  const subtitleRef = useRef<HTMLParagraphElement>(null);
+  const subtitleRef = useRef<HTMLDivElement>(null);
   const videoA = useRef<HTMLVideoElement>(null);
   const videoB = useRef<HTMLVideoElement>(null);
   const active = useRef<"a" | "b">("a");
@@ -50,24 +46,17 @@ export default function HeroSection() {
   const smoothedData = useRef<Record<string, Float32Array>>({});
 
   useGSAP(() => {
-    if (!splashDone) return;
     const subtitle = subtitleRef.current;
     const container = containerRef.current;
     const h1 = h1Ref.current;
     if (!subtitle || !container || !h1) return;
     const subtitleHeight = subtitle.offsetHeight;
 
-    if (isReturn.current) {
-      gsap.timeline()
-        .from(h1, { opacity: 0, filter: "blur(14px)", duration: 1.0, ease: "power3.out" })
-        .from(container, { y: subtitleHeight / 2, duration: 0.7, ease: "power2.out" }, "-=0.4")
-        .from(subtitle, { y: 20, opacity: 0, duration: 0.7, ease: "power2.out" }, "<");
-    } else {
-      gsap.timeline()
-        .from(container, { y: subtitleHeight / 2, duration: 0.7, ease: "power2.out" })
-        .from(subtitle, { y: 20, opacity: 0, duration: 0.7, ease: "power2.out" }, "<");
-    }
-  }, { dependencies: [splashDone] });
+    gsap.timeline()
+      .from(h1, { opacity: 0, filter: "blur(14px)", duration: 1.0, ease: "power3.out" })
+      .from(container, { y: subtitleHeight / 2, duration: 0.7, ease: "power2.out" }, "-=0.4")
+      .from(subtitle, { y: 20, opacity: 0, duration: 0.7, ease: "power2.out" }, "<");
+  }, []);
 
   // Crossfade video loop
   useEffect(() => {
@@ -113,7 +102,6 @@ export default function HeroSection() {
 
   // Oscilloscope RAF loop
   useEffect(() => {
-    if (!splashDone) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -219,53 +207,31 @@ export default function HeroSection() {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [splashDone]);
+  }, []);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
   }, []);
 
-  function handleEnter() {
-    sessionEntered = true;
-    // Dispatch immediately so audio starts within the user gesture context
-    window.dispatchEvent(new Event("splashEntered"));
-    // Delay visual state until keyboard has fully dismissed and viewport settled
-    setTimeout(() => {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-      setSplashDone(true);
-      // Scroll again after React renders the canvas
-      requestAnimationFrame(() => {
-        window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
-      });
-    }, 350);
-  }
+  const songIndex = songs.findIndex((x) => x.id === songId);
+  const arrow = "pointer-events-auto flex items-center justify-center w-8 h-8 rounded-full text-white/80 hover:text-white hover:bg-white/15 active:scale-90 transition";
 
   return (
     <section className="relative flex items-center justify-center overflow-hidden" style={{ minHeight: "100dvh" }}>
-      {/* White backdrop behind splash so iOS keyboard gap never shows video */}
-      {!splashDone && <div className="fixed inset-0 z-[99] bg-white" />}
-      {!splashDone && <SplashScreen onEnter={handleEnter} />}
-
       <video ref={videoA} autoPlay muted playsInline className="absolute inset-0 w-full object-cover" style={{ height: "100dvh" }} src="/hero.mp4" />
       <video ref={videoB} muted playsInline className="absolute inset-0 w-full object-cover" style={{ height: "100dvh" }} />
 
       {/* Oscilloscope — absolutely positioned above the title, z between video and text */}
-      {splashDone && (
-        <canvas
-          ref={canvasRef}
-          className="fixed pointer-events-none z-10 top-[4rem] md:top-[4.5rem]"
-          style={{
-            left: 0,
-            width: "100%",
-            height: `${CANVAS_H}px`,
-          }}
-        />
-      )}
+      <canvas
+        ref={canvasRef}
+        className="fixed pointer-events-none z-10 top-[4rem] md:top-[4.5rem]"
+        style={{
+          left: 0,
+          width: "100%",
+          height: `${CANVAS_H}px`,
+        }}
+      />
 
       {/* Title + subtitle — layout unchanged */}
       <div ref={containerRef} className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
@@ -278,15 +244,19 @@ export default function HeroSection() {
             Los Syringas
           </h1>
 
-          {splashDone && (
-            <p
-              ref={subtitleRef}
-              className="text-white/80 mt-4"
-              style={{ fontSize: "clamp(0.9rem, 2vw, 1.125rem)" }}
-            >
+          <div ref={subtitleRef} className="mt-4 flex flex-col items-center gap-4">
+            <p className="text-white/80" style={{ fontSize: "clamp(0.9rem, 2vw, 1.125rem)" }}>
               Indie Surf Rock Band · Boise, ID
             </p>
-          )}
+            {/* Song switcher: back to the Sueños sticky wall */}
+            <div className="pointer-events-auto inline-flex items-center gap-1 rounded-full bg-black/25 backdrop-blur-md px-1 py-1 text-white">
+              <button onClick={() => onSwitch(neighborSong(songId, -1))} className={arrow} aria-label="Previous song">‹</button>
+              <span className="px-2 text-xs font-semibold uppercase tracking-wider whitespace-nowrap">
+                {songs[songIndex].title} · {songIndex + 1} of {songs.length}
+              </span>
+              <button onClick={() => onSwitch(neighborSong(songId, 1))} className={arrow} aria-label="Next song">›</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>

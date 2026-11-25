@@ -7,6 +7,7 @@ import gsap from "gsap";
 import { Volume2, VolumeX, Play, Pause } from "lucide-react";
 import * as Tone from "tone";
 import { stemAnalysers, setActiveStemIds, setIsMuted, setIsPlaying } from "@/lib/audioAnalysers";
+import { useCurrentSong } from "@/lib/currentSong";
 
 const stems = [
   { id: "bass",       label: "Bass",        image: "/Portraits/Shawn.png",    file: "/stems/TSINFU demo flat_Bass.mp3" },
@@ -16,8 +17,6 @@ const stems = [
   { id: "percussion", label: "Percussion",  image: "/Portraits/Pearson.png",  file: "/stems/TSINFU demo flat_Percussion.mp3" },
   { id: "magic",      label: "Magic",       image: "/Portraits/Mushrooms.png",file: "/stems/TSINFU demo flat_Magic.mp3" },
 ];
-
-let splashCleared = false;
 
 interface StemButtonProps {
   id: string;
@@ -60,9 +59,12 @@ export default function StemPlayer() {
   const [playing, setPlaying] = useState(true);
   const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [animReady, setAnimReady] = useState(splashCleared);
   const [navMenuOpen, setNavMenuOpen] = useState(false);
   const isHome = usePathname() === "/";
+  // This player is "This Song Is Not for You". While the homepage shows another
+  // song (the Sueños sticky wall), it hides and stays silent.
+  const isOurSong = useCurrentSong() === "tsinfu";
+  const isOurSongRef = useRef(isOurSong);
 
   const stemsRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
@@ -85,29 +87,23 @@ export default function StemPlayer() {
     )
   );
 
+  // Slide the stem row and controls up whenever they (re)appear.
   useGSAP(() => {
-    if (animReady) return;
-    const targets = [stemsRef.current, controlsRef.current].filter(Boolean);
-    if (targets.length) gsap.set(targets, { opacity: 0, y: 40 });
-  }, []);
+    if (!isOurSong) return;
+    if (stemsRef.current) gsap.from(stemsRef.current, { opacity: 0, y: 40, duration: 0.7, ease: "power3.out" });
+    gsap.from(controlsRef.current, { opacity: 0, y: 40, duration: 0.7, ease: "power3.out", delay: 0.15 });
+  }, { dependencies: [isOurSong, isHome] });
 
-  useGSAP(() => {
-    if (!animReady) return;
-    gsap.to(stemsRef.current, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" });
-    gsap.to(controlsRef.current, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out", delay: 0.15 });
-  }, { dependencies: [animReady] });
-
+  // Silence (without stopping) while another song is on the homepage, so the
+  // loop stays in sync and comes straight back when switching to it.
   useEffect(() => {
-    if (splashCleared) return;
-    function onEntered() {
-      splashCleared = true;
-      setAnimReady(true);
-      startAudio();
-    }
-    window.addEventListener("splashEntered", onEntered);
-    return () => window.removeEventListener("splashEntered", onEntered);
+    isOurSongRef.current = isOurSong;
+    if (!started) return;
+    const audible = isOurSong && playingRef.current;
+    Tone.getDestination().volume.value = audible ? 0 : -Infinity;
+    if (bridgeAudioRef.current) bridgeAudioRef.current.muted = !audible || muted;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isOurSong, started]);
 
   useEffect(() => {
     Tone.getDestination().mute = muted;
@@ -154,8 +150,9 @@ export default function StemPlayer() {
         // Give iOS a moment to fully unfreeze before touching the AudioContext.
         setTimeout(() => {
           rawCtx.resume().then(() => {
-            if (playingRef.current) Tone.getDestination().volume.value = 0;
-            if (bridge) bridge.muted = !playingRef.current || muted;
+            const audible = playingRef.current && isOurSongRef.current;
+            if (audible) Tone.getDestination().volume.value = 0;
+            if (bridge) bridge.muted = !audible || muted;
           }).catch(() => {});
         }, 200);
       }
@@ -191,7 +188,7 @@ export default function StemPlayer() {
         gsap.to(el, { boxShadow: "0 0 0 0px rgba(255,198,0,0)", duration: 0.3 });
       }
     });
-  }, [active, animReady, isHome]);
+  }, [active, isOurSong, isHome]);
 
   async function startAudio() {
     setLoading(true);
@@ -293,7 +290,7 @@ export default function StemPlayer() {
   return (
     <>
       {/* Stems — home page only, single render, responsive grid */}
-      {isHome && (
+      {isHome && isOurSong && (
         <div ref={stemsRef} className={`fixed left-1/2 -translate-x-1/2 z-50 transition-opacity duration-200 ${navMenuOpen ? "opacity-0 pointer-events-none" : ""}`} style={{ bottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
           <div className="grid grid-cols-3 w-[75vw] gap-x-3 gap-y-3 md:w-auto md:flex md:flex-row md:gap-4" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
             {stems.map(({ id, label, image }) => (
@@ -314,7 +311,7 @@ export default function StemPlayer() {
       )}
 
       {/* Desktop controls — play/pause + mute, fixed right */}
-      <div ref={controlsRef} className="hidden md:flex fixed bottom-6 right-6 z-50">
+      <div ref={controlsRef} className={`${isOurSong ? "md:flex" : ""} hidden fixed bottom-6 right-6 z-50`}>
         <div className="flex flex-row gap-2 bg-white border border-[var(--black)]/15 rounded-2xl px-4 py-3 shadow-sm">
           <button
             onClick={handlePlayPause}
