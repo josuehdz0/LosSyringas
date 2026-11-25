@@ -7,25 +7,26 @@ import StickyWall from "@/components/sticky-wall/StickyWall";
 import HeroSection from "@/components/HeroSection";
 
 /**
- * Homepage: shows the current song. `?song=<id>` picks it (newest at plain "/").
+ * Homepage: shows the current song (Sueños on a fresh visit). `?song=<id>`
+ * picks one; plain "/" keeps whatever the visitor switched to.
  * Sueños is the sticky wall; This Song Is Not for You is the original hero +
  * StemPlayer (StemPlayer stays mounted in the layout and shows its stem row
  * only while this song is current). The only way between them is the hidden
  * double-click/tap on the flower logo (see Nav).
  */
-export default function HomeSongs({ initialSong }: { initialSong: SongId }) {
+export default function HomeSongs({ requestedSong }: { requestedSong?: SongId }) {
   const storeSong = useCurrentSong();
 
   const [synced, setSynced] = useState(false);
 
-  // Follow the URL (first load, back/forward).
+  // An explicit ?song= in the URL picks the song; plain "/" keeps the current one.
   useEffect(() => {
-    setCurrentSong(initialSong);
+    if (requestedSong) setCurrentSong(requestedSong);
     setSynced(true);
-  }, [initialSong]);
+  }, [requestedSong]);
 
   // Until the store has caught up with the URL, trust the URL.
-  const song = synced ? storeSong : initialSong;
+  const song = synced ? storeSong : requestedSong ?? storeSong;
 
   return (
     <div key={song} className="animate-scene-in">

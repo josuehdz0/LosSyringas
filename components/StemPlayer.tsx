@@ -106,17 +106,26 @@ export default function StemPlayer() {
     gsap.from(controlsRef.current, { opacity: 0, y: 40, duration: 0.7, ease: "power3.out", delay: 0.15 });
   }, { dependencies: [isOurSong, isHome] });
 
-  // Every time this song comes up on the homepage (first load or a switch via
-  // the logo): back to its defaults (just the mushroom) and playing. Sound
-  // starts right away if the visitor has already interacted with the page (a
-  // logo double-click counts); otherwise on their first tap/click/key anywhere,
-  // since browsers block audio before that.
+  // Switched to this song (logo double-click): back to its defaults (just the
+  // mushroom) and playing. Only on an actual switch — coming back to the
+  // homepage from another page keeps whatever the visitor had going.
+  const wasOurSong = useRef(isOurSong);
   useEffect(() => {
-    if (!isHome || !isOurSong) return;
+    const switchedIn = isOurSong && !wasOurSong.current;
+    wasOurSong.current = isOurSong;
+    if (!switchedIn) return;
     setActive(new Set(DEFAULT_ACTIVE));
     playingRef.current = true;
     setIsPlaying(true);
     setPlaying(true);
+  }, [isOurSong]);
+
+  // On the homepage with this song and not started yet: sound starts right
+  // away if the visitor has already interacted with the page (a logo
+  // double-click counts); otherwise on their first tap/click/key anywhere,
+  // since browsers block audio before that.
+  useEffect(() => {
+    if (!isHome || !isOurSong) return;
     if (startedRef.current) return;
     const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
     if (ua?.hasBeenActive) { startAudio(); return; }
