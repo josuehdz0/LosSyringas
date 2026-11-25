@@ -23,7 +23,7 @@
   user-select: none;
 }
 @media (max-width: 600px) {
-  .sticky-wall { --note: clamp(96px, 28vw, 124px); --desk-h: 180px; }
+  .sticky-wall { --note: clamp(96px, 28vw, 124px); --desk-h: 190px; }
 }
 
 /* Plaster: a fine speckle over a slow mottle, lit from above. */
@@ -43,11 +43,16 @@
 }
 
 /* Wall controls, sitting under the site nav. */
+/* Same column as the site nav: max-w-5xl, px-6 / md:px-12. */
 .sticky-wall .top {
   position: absolute; left: 0; right: 0; z-index: 30;
   top: max(64px, calc(env(safe-area-inset-top) + 56px));
   display: flex; justify-content: flex-end;
-  padding: 10px 20px;
+  max-width: 64rem; margin: 0 auto;
+  padding: 10px 24px;
+}
+@media (min-width: 768px) {
+  .sticky-wall .top { padding-left: 48px; padding-right: 48px; }
 }
 .sticky-wall .controls { display: flex; gap: 14px; }
 .sticky-wall .controls button {

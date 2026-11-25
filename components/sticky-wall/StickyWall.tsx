@@ -222,12 +222,24 @@ export default function StickyWall() {
     }
     type M = ReturnType<typeof metrics>;
 
+    // Same content column as the site nav (max-w-5xl = 1024px, px-6 / md:px-12);
+    // phones use the full width.
+    function column(m: M) {
+      if (m.narrow) return { left: 0, width: m.W, pad: 8 };
+      const box = Math.min(m.W, 1024);
+      const inset = m.W >= 768 ? 48 : 24;
+      return { left: (m.W - box) / 2 + inset, width: box - inset * 2, pad: 0 };
+    }
+
     function deskPose(n: NoteState, m: M): Pose {
-      const slotW = m.W / notes.length;
-      const deskScale = m.narrow ? 0.82 : 0.86;
-      const half = (m.size * deskScale) / 2 + 8;
-      const rawX = slotW * (n.i + 0.5) + n.deskJ.x * Math.min(slotW, m.size) * 0.6;
-      const x = Math.min(m.W - half, Math.max(half, rawX));
+      const col = column(m);
+      const slotW = col.width / notes.length;
+      const deskScale = m.narrow ? 0.92 : 0.86;
+      const half = (m.size * deskScale) / 2 + col.pad;
+      // Less sideways scatter on phones, where the notes already overlap.
+      const scatter = m.narrow ? 0.2 : 0.6;
+      const rawX = col.left + slotW * (n.i + 0.5) + n.deskJ.x * Math.min(slotW, m.size) * scatter;
+      const x = Math.min(col.left + col.width - half, Math.max(col.left + half, rawX));
       const y = m.deskTop + m.deskH * 0.52 + n.deskJ.y * m.deskH * 0.5;
       return { x, y, r: n.deskJ.r, k: deskScale };
     }
@@ -328,9 +340,11 @@ export default function StickyWall() {
       n.onWall = false;
       n.deskJ = { x: rnd(-0.25, 0.25), y: rnd(-0.22, 0.22), r: rnd(-16, 16) };
       const to = deskPose(n, m);
+      // The note just taken down lands on top of the pile.
+      n.el.style.zIndex = String(++zTop);
       setStem(n, false);
       label(n);
-      move(n, m, from, to, PEEL_MS, { lf: [1, 0.35], onDone: () => { n.el.style.zIndex = String(10 + n.i); } });
+      move(n, m, from, to, PEEL_MS, { lf: [1, 0.35] });
       n.pos = to;
     }
 
@@ -396,7 +410,12 @@ export default function StickyWall() {
         notes.filter((n) => !n.onWall).forEach((n, k) => later(() => stick(n), k * 110));
       },
       clear: () => {
-        notes.filter((n) => n.onWall).forEach((n, k) => later(() => peel(n), k * 90));
+        // Take them down top-most first, the way you'd unstack real notes.
+        const z = (n: NoteState) => Number(n.el.style.zIndex) || 10;
+        notes
+          .filter((n) => n.onWall)
+          .sort((a, b) => z(b) - z(a) || b.i - a.i)
+          .forEach((n, k) => later(() => peel(n), k * 90));
       },
       toggleMute: () => {
         window.dispatchEvent(new CustomEvent("muteToggle", { detail: { muted: !mutedNow } }));
