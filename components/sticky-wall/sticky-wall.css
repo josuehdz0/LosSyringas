@@ -200,15 +200,19 @@
 .sticky-wall.theme-white { --wall: #ffffff; background: #ffffff; }
 .sticky-wall.theme-white .wall { background: #ffffff; }
 /* Overrides each note's own off-white --c; slight per-note variation. */
-/* Powder blue, with bass + drums in aqua to compare.
-   Earlier tries: pastel blue #cfe8f7 / #cae5f5 / #d4ebf8,
-   light pastel yellow #fffac8 / #fff9c2 / #fffbcf,
-   Canary Yellow #fff7a6 / #fff6a0 / #fff8ad. */
-.sticky-wall.theme-white .note .paper { --c: #ddf0fa; }
-.sticky-wall.theme-white .note[data-stem="pearson"] .paper { --c: #d9eef9; }
-.sticky-wall.theme-white .note[data-stem="keys"] .paper { --c: #e0f2fb; }
+/* A mix of Post-it-style pastels, one per note:
+     keys    light yellow  #fffac8
+     pearson powder blue   #ddf0fa
+     bass    aqua          #bdebf0
+     drums   pastel blue   #cfe8f7
+     josué   soft pink     #fbdce6
+   (Canary Yellow, if you want the classic, is #fff7a6.) */
+.sticky-wall.theme-white .note .paper { --c: #fffac8; }
+.sticky-wall.theme-white .note[data-stem="keys"] .paper { --c: #fffac8; }
+.sticky-wall.theme-white .note[data-stem="pearson"] .paper { --c: #ddf0fa; }
 .sticky-wall.theme-white .note[data-stem="bass"] .paper { --c: #bdebf0; }
-.sticky-wall.theme-white .note[data-stem="drums"] .paper { --c: #c2edf1; }
+.sticky-wall.theme-white .note[data-stem="drums"] .paper { --c: #cfe8f7; }
+.sticky-wall.theme-white .note[data-stem="josue"] .paper { --c: #fbdce6; }
 /* A white wall reflects more light, so shadows read a touch lighter. */
 .sticky-wall.theme-white .sh-hard i { background: rgba(40, 36, 30, .24); }
 .sticky-wall.theme-white .sh-soft i { background: rgba(40, 36, 30, .2); }
