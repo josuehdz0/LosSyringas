@@ -202,14 +202,14 @@
 /* Overrides each note's own off-white --c; slight per-note variation. */
 /* A mix of Post-it-style pastels, one per note:
      keys    light yellow  #fffac8
-     pearson powder blue   #ddf0fa
+     pearson soft peach    #ffe0c4   (was powder blue #ddf0fa, too close to drums)
      bass    aqua          #bdebf0
      drums   pastel blue   #cfe8f7
      josué   soft pink     #fbdce6
    (Canary Yellow, if you want the classic, is #fff7a6.) */
 .sticky-wall.theme-white .note .paper { --c: #fffac8; }
 .sticky-wall.theme-white .note[data-stem="keys"] .paper { --c: #fffac8; }
-.sticky-wall.theme-white .note[data-stem="pearson"] .paper { --c: #ddf0fa; }
+.sticky-wall.theme-white .note[data-stem="pearson"] .paper { --c: #ffe0c4; }
 .sticky-wall.theme-white .note[data-stem="bass"] .paper { --c: #bdebf0; }
 .sticky-wall.theme-white .note[data-stem="drums"] .paper { --c: #cfe8f7; }
 .sticky-wall.theme-white .note[data-stem="josue"] .paper { --c: #fbdce6; }
