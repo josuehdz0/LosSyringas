@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, DM_Sans, Caveat, Permanent_Marker } from "next/font/google";
+import { Fraunces, DM_Sans } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import StemPlayer from "@/components/StemPlayer";
@@ -16,18 +16,6 @@ const dmSans = DM_Sans({
   subsets: ["latin"],
   variable: "--font-body",
   weight: ["400", "500", "600", "700"],
-});
-
-// Handwritten faces for the Sueños sticky wall
-const caveat = Caveat({
-  subsets: ["latin"],
-  variable: "--font-caveat",
-});
-
-const marker = Permanent_Marker({
-  subsets: ["latin"],
-  variable: "--font-marker",
-  weight: "400",
 });
 
 export const viewport = {
@@ -54,7 +42,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${fraunces.variable} ${dmSans.variable} ${caveat.variable} ${marker.variable} antialiased`}>
+      <body className={`${fraunces.variable} ${dmSans.variable} antialiased`}>
         <Nav />
         {children}
         <StemPlayer />

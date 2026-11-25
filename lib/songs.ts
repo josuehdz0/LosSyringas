@@ -1,6 +1,6 @@
 // Songs the homepage can show, newest first. songs[0] lives at plain "/".
 export const songs = [
-  { id: "suenos", title: "sueños", sub: "new single" },
+  { id: "suenos", title: "Sueños", sub: "new single" },
   { id: "tsinfu", title: "This Song Is Not for You", sub: "stem player" },
 ] as const;
 
