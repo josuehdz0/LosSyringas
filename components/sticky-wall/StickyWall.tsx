@@ -127,6 +127,14 @@ const WALL_TOP = 88;
 const HOVER_H = 0.5;    // share of the full carry lift
 const HOVER_MS = 200;
 
+// Arrival wave: each note does the hover lift in turn, left to right on
+// screen, overlapping so it ripples rather than ticks. Shows they're tappable.
+const WAVE_DELAY = 500;    // after the wall appears
+const WAVE_STAGGER = 130;  // between one note starting and the next
+const WAVE_UP_MS = 320;    // lift (slower than a mouse hover, to read as a wave)
+const WAVE_HOLD = 90;      // at the top
+const WAVE_DOWN_MS = 380;  // settle
+
 interface Pose { x: number; y: number; r: number; k: number }
 interface Jitter { x: number; y: number; r: number }
 interface NoteState {
@@ -390,7 +398,7 @@ export default function StickyWall() {
     function cancelHover(n: NoteState) {
       if (n.hovRaf) { cancelAnimationFrame(n.hovRaf); rafs.delete(n.hovRaf); n.hovRaf = 0; }
     }
-    function hoverTo(n: NoteState, target: number) {
+    function hoverTo(n: NoteState, target: number, ms = HOVER_MS) {
       n.hovTarget = target;
       if (n.busy) return;
       if (reduce) { n.hov = target; renderHover(n, metrics()); return; }
@@ -400,7 +408,7 @@ export default function StickyWall() {
         rafs.delete(n.hovRaf);
         n.hovRaf = 0;
         if (disposed || n.busy) return;
-        const step = (now - last) / HOVER_MS;
+        const step = (now - last) / ms;
         last = now;
         n.hov = n.hovTarget > n.hov ? Math.min(n.hovTarget, n.hov + step) : Math.max(n.hovTarget, n.hov - step);
         renderHover(n, metrics());
@@ -430,6 +438,20 @@ export default function StickyWall() {
     window.addEventListener("resize", layout);
     layout();
     setReady(true);
+
+    // Arrival wave (skipped with reduced motion). A note the visitor is
+    // actually hovering or has just clicked is left alone.
+    if (!reduce) {
+      [...notes]
+        .sort((a, b) => (a.pos?.x ?? 0) - (b.pos?.x ?? 0))
+        .forEach((n, k) => {
+          const start = WAVE_DELAY + k * WAVE_STAGGER;
+          later(() => { if (!n.busy && !n.hovTarget) hoverTo(n, 1, WAVE_UP_MS); }, start);
+          later(() => {
+            if (!n.busy && !n.el.matches(":hover")) hoverTo(n, 0, WAVE_DOWN_MS);
+          }, start + WAVE_UP_MS + WAVE_HOLD);
+        });
+    }
     document.fonts?.ready.then(() => { if (!disposed) layout(); });
 
     return () => {
