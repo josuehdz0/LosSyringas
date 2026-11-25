@@ -28,7 +28,9 @@ export default function Nav() {
   // Pages with a full-bleed hero photo — nav should be white text when not scrolled
   const hasHero = pathname === "/music";
   // The Sueños sticky wall is light beige, so the nav goes dark there.
-  const onWall = isHome && useCurrentSong() === "suenos";
+  // (Hook called unconditionally: hooks must run in the same order every render.)
+  const currentSong = useCurrentSong();
+  const onWall = isHome && currentSong === "suenos";
   const useWhiteText = (isHome && !onWall) || (hasHero && !scrolled);
 
   useGSAP(() => {
